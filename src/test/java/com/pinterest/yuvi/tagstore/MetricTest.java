@@ -44,7 +44,7 @@ public class MetricTest {
   public void testMetricWithMultiTagCreation() {
     String metricName = "testMetric";
     String tag1 = "k1=v1";
-    String tag2 = "k1=v2";
+    String tag2 = " k1=v2 ";
     String tag3 = " k2=v2";
     String tag4 = "k2=v1 ";
     String tag5 = "";

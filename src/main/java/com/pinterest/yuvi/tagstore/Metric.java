@@ -2,8 +2,10 @@ package com.pinterest.yuvi.tagstore;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 /**
@@ -32,6 +34,7 @@ public final class Metric {
    *
    * @param metricName
    * @param rawTags
+   * TODO: To optimize further, pass in rawTags that are sorted and trimmed.
    */
   public Metric(final String metricName, final List<String> rawTags) {
     if (StringUtils.isNotBlank(metricName)) {
@@ -39,7 +42,6 @@ public final class Metric {
     } else {
       throw new IllegalArgumentException("Invalid metric name");
     }
-
     try {
       this.tags = parseTags(rawTags);
     } catch (Exception e) {
@@ -56,24 +58,34 @@ public final class Metric {
    * @param rawTags a list of strings of the form "tag1=value1 tag2=value2..."
    */
   public static List<Tag> parseTags(List<String> rawTags) {
-    return rawTags.stream().filter(rawTag -> rawTag != null && !rawTag.isEmpty())
-        .map(rawTag -> Tag.parseTag(rawTag.trim())).collect(Collectors.toList());
+    ArrayList<Tag> tags = new ArrayList<>(rawTags.size());
+    for (String rawTag : rawTags) {
+      if (rawTag != null && !rawTag.isEmpty()) {
+        tags.add(Tag.parseTag(rawTag.trim()));
+      }
+    }
+    return tags;
   }
 
   private String getFullMetricName(List<String> rawTags) {
-    List<String> filteredRawTags = rawTags.stream()
-        .filter(tag -> tag != null && !tag.isEmpty())
-        .map(tag -> tag.trim())
-        .collect(Collectors.toList());
+    TreeSet<String> sortedTags = new TreeSet();
+    for (String rawTag : rawTags) {
+      if (rawTag != null && !rawTag.isEmpty()) {
+        sortedTags.add(rawTag.trim());
+      }
+    }
 
-    Collections.sort(filteredRawTags);
     if (rawTags.isEmpty()) {
       return metricName;
     } else {
-      return new StringBuilder().append(metricName)
-          .append(METRIC_SEPARATOR)
-          .append(String.join(String.valueOf(METRIC_SEPARATOR), filteredRawTags))
-          .toString();
+      StringBuilder fullMetricName = new StringBuilder(250);
+      fullMetricName.append(metricName);
+      for (String tag : sortedTags) {
+        fullMetricName.append(METRIC_SEPARATOR);
+        fullMetricName.append(tag);
+      }
+
+      return fullMetricName.toString();
     }
   }
 
