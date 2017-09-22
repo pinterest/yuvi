@@ -34,7 +34,7 @@ public class OffHeapChunkManagerTask implements Runnable {
             .filter(entry -> offHeapCutoffSecs > entry.getValue().info().endTimeSecs)
             .collect(Collectors.toList());
 
-    LOG.info("Number of chunks past cut off are: " + readOnlyChunks.size());
+    LOG.info("Number of chunks past cut off: {}.", readOnlyChunks.size());
     chunkManager.toReadOnlyChunks(readOnlyChunks);
   }
 }

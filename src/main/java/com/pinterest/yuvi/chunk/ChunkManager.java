@@ -58,7 +58,9 @@ public class ChunkManager {
   public ChunkManager(String chunkDataPrefix, int expectedTagStoreSize) {
     chunkMap = new ConcurrentHashMap<>();
     this.chunkDataPrefix = chunkDataPrefix;
-    this.tagStore = new InvertedIndexTagStore(expectedTagStoreSize);
+    this.tagStore = new InvertedIndexTagStore(expectedTagStoreSize, expectedTagStoreSize);
+    LOG.info("Created a chunk manager with prefix {} and initial tag store size {}",
+        chunkDataPrefix, expectedTagStoreSize);
   }
 
   private Chunk makeChunk(long startTime) {
@@ -88,7 +90,7 @@ public class ChunkManager {
           return newChunk;
         } else {
           // Because of the synchronized lock only one thread can create a chunk once.
-          LOG.error("Possible race condition in Chunk Manager.");
+          LOG.warn("Possible race condition in Chunk Manager.");
           return prevChunk;
         }
       }
@@ -210,15 +212,17 @@ public class ChunkManager {
   @VisibleForTesting
   void toOffHeapChunkMap() {
     Map<Long, Chunk> offHeapChunkMap = new ConcurrentHashMap<>();
-
     synchronized (chunkMapSync) {
-      chunkMap.entrySet().stream().forEach(entry -> {
-        Chunk offHeapChunk = toOffHeapChunk(entry.getValue());
-        offHeapChunkMap.put(entry.getKey(), offHeapChunk);
+      chunkMap.entrySet().stream().forEach(chunkEntry -> {
+        LOG.info("Moving chunk to off heap: {}", chunkEntry.getValue().info());
+        Chunk offHeapChunk = toOffHeapChunk(chunkEntry.getValue());
+        offHeapChunkMap.put(chunkEntry.getKey(), offHeapChunk);
+        LOG.info("Moved chunk to off heap: {}", chunkEntry.getValue().info());
       });
 
       chunkMap.clear();
       chunkMap.putAll(offHeapChunkMap);
+      LOG.info("Moved all chunks to off heap.");
     }
   }
 
@@ -237,11 +241,11 @@ public class ChunkManager {
   }
 
   public void toReadOnlyChunks(List<Map.Entry<Long, Chunk>> expiredChunks) {
-    LOG.info("Chunks past cut off are: " + expiredChunks);
+    LOG.info("Chunks past cut off are: {}", expiredChunks);
 
     expiredChunks.forEach(entry -> {
       final Chunk chunk = entry.getValue();
-      LOG.info("Moving chunk to off heap: " + chunk.info());
+      LOG.info("Moving chunk {} to off heap.", chunk.info());
 
       Chunk readOnlyChunk = toOffHeapChunk(chunk);
 
@@ -251,7 +255,7 @@ public class ChunkManager {
         oldChunk.close();
       }
 
-      LOG.info("Moved chunk to off heap: " + chunk.info());
+      LOG.info("Moved chunk {} to off heap.", chunk.info());
     });
   }
 }

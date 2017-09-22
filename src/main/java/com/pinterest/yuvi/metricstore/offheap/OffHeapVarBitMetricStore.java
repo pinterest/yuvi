@@ -54,12 +54,14 @@ public class OffHeapVarBitMetricStore implements MetricStore {
         timeSeries = mapBuilder.name(offHeapNamePrefix + "_" + chunkInfo)
             .createPersistedTo(offHeapFile);
       } catch (IOException e) {
-        LOG.error("Failed to create an offheap store " + offHeapFile, e);
+        LOG.error("Failed to create an offheap store {} with error {}", offHeapFile, e.getMessage());
         throw new IllegalArgumentException("Failed to create an off heap store.", e);
       }
     } else {
       timeSeries = mapBuilder.name(offHeapNamePrefix).create();
     }
+    LOG.info("Created an off heap metric store of size={} valueSize={} chunkInfo={} in dir={}",
+        size, valueSize, chunkInfo, dir);
   }
 
   @Override
@@ -101,7 +103,8 @@ public class OffHeapVarBitMetricStore implements MetricStore {
         serializedTimeSeriesBuffer.flip();
         offHeapStore.addPoint(e.getKey(), serializedTimeSeriesBuffer);
       } catch (Exception ex) {
-        LOG.info("Entry failed with exception " + e.getKey(), ex);
+        LOG.info("Moving entry {} in chunk {} to off heap failed with exception {}",
+            e.getKey(), chunkInfo, ex);
       }
     });
     return offHeapStore;

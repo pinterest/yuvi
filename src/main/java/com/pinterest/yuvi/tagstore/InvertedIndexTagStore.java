@@ -5,6 +5,8 @@ import net.openhft.chronicle.map.ChronicleMap;
 import org.roaringbitmap.FastAggregation;
 import org.roaringbitmap.PeekableIntIterator;
 import org.roaringbitmap.RoaringBitmap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,49 +22,69 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * This class implements the tag store interface using an inverted index. The inverted index will
- * be implemented using a roaring bitmap.
+ * A Tag store needs to perform the following tasks:
+ * 1) On ingest assign a unique id to each metric (metric_name + sorted tags).
+ * 2) On query, return a list of ids that match the given query.
+ * 3) Given a metric id, return the name of the metric.
  *
- * This tag store will contain 2 maps:
- * a) One map maps a string to a List[int]
- * b) Other map maps a int to a string.
+ * To achieve this, this class implements the tag store interface using an inverted index and a
+ * forward index. The forward index will assign a metric id to each unique metric, useful for (1)
+ * and (3) above. Since the forward index contains a large quantitiy of strings, for GC efficiency,
+ * we store this map in off heap memory.
+ *
+ * The inverted index will help with (2). It stores a mapping of strings to a list of metric ids.
+ * For efficiency, the list of metric ids are stored in a roaring bitmap. Each query is translated
+ * into a series of lookups and operations on a roaring bitmaps. For now, the metric index is on
+ * heap because there is a cost to serialize and de-serialize the roaring bitmap every time a metric
+ * is added or removed and it is not expected to be small. We also don't expect the index to be
+ * persisted to disk because it can be re-constructed from the metricIdMap.
  */
 public class InvertedIndexTagStore implements TagStore {
+
+  private static Logger LOG = LoggerFactory.getLogger(InvertedIndexTagStore.class);
+
+  private static final int DEFAULT_METRIC_ID_MAP_SIZE = 10000;
+  private static final int DEFAULT_METRIC_INDEX_SIZE = DEFAULT_METRIC_ID_MAP_SIZE;
+  private static final int AVERAGE_METRIC_NAME_SIZE = 250;
+  private static final boolean USE_OFFHEAP_TAGSTORE = true;
 
   private static final String MISSING_METRIC = "";
 
   private static final RoaringBitmap EMPTY_BITMAP = new RoaringBitmap();
 
-  private static final int DEFAULT_UUID_MAP_SIZE = 1000;
-
-  private static final int AVERAGE_METRIC_NAME_SIZE = 1024;
-
-  private Map<String, RoaringBitmap> nameMap;
-  private Map<Integer, String> uuidMap;
-
+  private Map<String, RoaringBitmap> metricIndex;
+  private Map<Integer, String> metricIdMap;
   private AtomicInteger tagStoreCounter;
+  private final int metricIdMapCapacity;
 
   public InvertedIndexTagStore() {
-    this(DEFAULT_UUID_MAP_SIZE);
+    this(DEFAULT_METRIC_ID_MAP_SIZE, DEFAULT_METRIC_INDEX_SIZE);
   }
 
-  public InvertedIndexTagStore(int initialMapSize) {
-    this(new ConcurrentHashMap<>(), ChronicleMap.of(Integer.class, String.class)
-        .entries(initialMapSize)
-        .averageValueSize(AVERAGE_METRIC_NAME_SIZE)
-        .create());
-  }
+  public InvertedIndexTagStore(int metricIdMapCapacity, int initialIndexSize) {
+    LOG.info("Creating an inverted index tag store.");
+    if (USE_OFFHEAP_TAGSTORE) {
+      this.metricIdMap = ChronicleMap.of(Integer.class, String.class)
+          .entries(metricIdMapCapacity)
+          .averageValueSize(AVERAGE_METRIC_NAME_SIZE)
+          .create();
+    } else {
+      this.metricIdMap = new ConcurrentHashMap<>(metricIdMapCapacity);
+    }
+    LOG.info("Created an off heap tag store of size={} valueSize={}",
+        metricIdMapCapacity, AVERAGE_METRIC_NAME_SIZE);
 
-  public InvertedIndexTagStore(Map<String, RoaringBitmap> nameMap, Map<Integer, String> uuidMap) {
+    this.metricIndex = new ConcurrentHashMap<>(initialIndexSize);
+
     this.tagStoreCounter = new AtomicInteger(1);
-    this.nameMap = nameMap;
-    this.uuidMap = uuidMap;
+    this.metricIdMapCapacity = metricIdMapCapacity;
+    LOG.info("Created an inverted index tag store.");
   }
 
   @Override
   public Optional<Integer> get(Metric m) {
-    if (nameMap.containsKey(m.fullMetricName)) {
-      return Optional.of(nameMap.get(m.fullMetricName).getIntIterator().next());
+    if (metricIndex.containsKey(m.fullMetricName)) {
+      return Optional.of(metricIndex.get(m.fullMetricName).getIntIterator().next());
     }
     return Optional.empty();
   }
@@ -128,16 +150,16 @@ public class InvertedIndexTagStore implements TagStore {
   private RoaringBitmap getIncludedIds(String metricName, List<TagMatcher> tagMatchers) {
     List<RoaringBitmap> andBitMaps = new ArrayList<>();
 
-    if (nameMap.containsKey(metricName)) {
-      andBitMaps.add(nameMap.get(metricName));
+    if (metricIndex.containsKey(metricName)) {
+      andBitMaps.add(metricIndex.get(metricName));
     } else {
       andBitMaps.add(EMPTY_BITMAP); // If no metric name is present, return empty bitmap
     }
 
     for (TagMatcher t : tagMatchers) {
-      if (nameMap.containsKey(t.tag.key)) {
+      if (metricIndex.containsKey(t.tag.key)) {
         // Include all metrics that include this tag key.
-        andBitMaps.add(nameMap.get(t.tag.key));
+        andBitMaps.add(metricIndex.get(t.tag.key));
 
         // Fast path looks up inverted index.
 
@@ -271,16 +293,16 @@ public class InvertedIndexTagStore implements TagStore {
   private RoaringBitmap getExcludedIds(String metricName, List<TagMatcher> tagMatchers) {
     List<RoaringBitmap> andNotBitMaps = new ArrayList<>();
 
-    if (nameMap.containsKey(metricName)) {
-      andNotBitMaps.add(nameMap.get(metricName));
+    if (metricIndex.containsKey(metricName)) {
+      andNotBitMaps.add(metricIndex.get(metricName));
     } else {
       andNotBitMaps.add(EMPTY_BITMAP);
     }
 
     for (TagMatcher t : tagMatchers) {
-      if (nameMap.containsKey(t.tag.key)) {
+      if (metricIndex.containsKey(t.tag.key)) {
         // Include all metrics that include this tag key.
-        andNotBitMaps.add(nameMap.get(t.tag.key));
+        andNotBitMaps.add(metricIndex.get(t.tag.key));
 
         // Slow path gets the values for the metric and then matches based on the logic.
         Map<Integer, String> valuesWithMetricIds = getValuesForMetricKey(metricName, t.tag.key);
@@ -303,8 +325,8 @@ public class InvertedIndexTagStore implements TagStore {
 
   private void matchExactTag(TagMatcher t, List<RoaringBitmap> resultMap) {
     String rawTag = t.tag.key + "=" + t.tag.value;
-    if (nameMap.containsKey(rawTag)) {
-      resultMap.add(nameMap.get(rawTag));
+    if (metricIndex.containsKey(rawTag)) {
+      resultMap.add(metricIndex.get(rawTag));
     } else {
       resultMap.add(EMPTY_BITMAP);  // If not exact match is present, return empty bitmap.
     }
@@ -331,8 +353,8 @@ public class InvertedIndexTagStore implements TagStore {
     for (int i = 0; i < split.length; i++) {
       if (!split[i].isEmpty()) {
         final String tagValuePair = t.tag.key + "=" + split[i];
-        if (nameMap.containsKey(tagValuePair)) {
-          orMaps.add(nameMap.get(tagValuePair));
+        if (metricIndex.containsKey(tagValuePair)) {
+          orMaps.add(metricIndex.get(tagValuePair));
         }
       }
     }
@@ -380,14 +402,14 @@ public class InvertedIndexTagStore implements TagStore {
   public Map<Integer, String> getValuesForMetricKey(String metricName, String key) {
     List<RoaringBitmap> andBitMaps = new ArrayList<>();
 
-    if (nameMap.containsKey(metricName)) {
-      andBitMaps.add(nameMap.get(metricName));
+    if (metricIndex.containsKey(metricName)) {
+      andBitMaps.add(metricIndex.get(metricName));
     } else {
       andBitMaps.add(EMPTY_BITMAP);
     }
 
-    if (nameMap.containsKey(key)) {
-      andBitMaps.add(nameMap.get(key));
+    if (metricIndex.containsKey(key)) {
+      andBitMaps.add(metricIndex.get(key));
     } else {
       andBitMaps.add(EMPTY_BITMAP);
     }
@@ -395,7 +417,7 @@ public class InvertedIndexTagStore implements TagStore {
     RoaringBitmap resultBitMap = FastAggregation.and(andBitMaps.iterator());
     HashMap<Integer, String> resultMap = new HashMap<>();
     for (int i : resultBitMap.toArray()) {
-      resultMap.put(i, extractTagValueForTagKey(uuidMap.get(i), key));
+      resultMap.put(i, extractTagValueForTagKey(metricIdMap.get(i), key));
     }
     return resultMap;
   }
@@ -418,11 +440,9 @@ public class InvertedIndexTagStore implements TagStore {
   }
 
   /**
-   * getOrCreate a metric.
-   * TODO: Make this multi-threaded friendly?.
-   * TODO: Do we need to create a new map for storing metric names separately?
-   * TODO: Create a bitmap of max size 1 for full metric metricName. Does this help?
-   * @param m the metric to assign a UUID
+   * get the id of a metric if it exists or create an id for the metric and return it.
+   * TODO: Make this multi-threaded friendly.
+   * @param m the metric to assign a metricId
    * @return
    */
   @Override
@@ -432,18 +452,18 @@ public class InvertedIndexTagStore implements TagStore {
   }
 
   @Override
-  public String getMetricName(final int uuid) {
-    return uuidMap.getOrDefault(uuid, MISSING_METRIC);
+  public String getMetricName(final int metricId) {
+    return metricIdMap.getOrDefault(metricId, MISSING_METRIC);
   }
 
   @Override
   public Map<String, Object> getStats() {
     Map<String, Object> stats = new HashMap<>();
-    stats.put("NameMapSize", nameMap.size());
-    stats.put("NameMapDistribution",
-        nameMap.entrySet().stream().map(entry -> entry.getValue().getCardinality())
+    stats.put("IndexMapSize", metricIndex.size());
+    stats.put("IndexMapDistribution",
+        metricIndex.entrySet().stream().map(entry -> entry.getValue().getCardinality())
             .collect(Collectors.groupingBy(Function.identity(), Collectors.counting())));
-    stats.put("UUIDMapSize", uuidMap.size());
+    stats.put("MetricIdMapSize", metricIdMap.size());
     return stats;
   }
 
@@ -452,44 +472,78 @@ public class InvertedIndexTagStore implements TagStore {
    */
   @Override
   public void close() {
-    this.nameMap = null;
-    this.uuidMap = null;
+    metricIdMap.clear();
+    this.metricIdMap = null;
+    metricIndex.clear();
+    this.metricIndex = null;
   }
 
   @VisibleForTesting
-  Map<String, RoaringBitmap> getNameMap() {
-    return nameMap;
+  Map<String, RoaringBitmap> getMetricIndex() {
+    return metricIndex;
   }
 
   public String getMetricNameFromId(final int id) {
-    return uuidMap.get(id);
+    return metricIdMap.get(id);
   }
 
+  /**
+   * Add a new metric to tag store. This method will assign an id to the metric and add it to the
+   * metric index.
+   *
+   * Failure to add a metric to metricIndex will leave the tag store in an inconsistent state.
+   *
+   * TODO: Add revert action to this method if metric creation fails.
+   * TODO: Consider preventing further writes to the tag store once we hit capacity.
+   */
   private int create(final Metric m) {
     int newMetricId = tagStoreCounter.incrementAndGet();
 
+    /**
+     * Add an inverse lookup for each metric Id so it's easy to get the metric metricName back.
+     *
+     * We should update the metricIdMap first because if it fails the metricIndex will be in an
+     * inconsistent state since we are adding a metricId that was never created. Another reason is
+     * since metricIdMap is off heap there is a higher chance of failures than
+     * adding an element to the in-memory map.
+     */
+    metricIdMap.put(newMetricId, m.fullMetricName);
+
     // Add an entry with full metric metricName.
-    addNameKey(m.fullMetricName, newMetricId);
+    addToMetricIndex(m.fullMetricName, newMetricId);
 
     // Add an entry with metricName.
-    addNameKey(m.metricName, newMetricId);
+    addToMetricIndex(m.metricName, newMetricId);
 
     // For a mapping for each key and value.
     for (Tag tag : m.tags) {
-      addNameKey(tag.key, newMetricId);
-      addNameKey(tag.rawTag, newMetricId);
+      addToMetricIndex(tag.key, newMetricId);
+      addToMetricIndex(tag.rawTag, newMetricId);
     }
 
-    // Add an inverse lookup for each metric Id so it's easy to get the metric metricName back.
-    uuidMap.put(newMetricId, m.fullMetricName);
+    // If the off heap tag store exceeds capacity print a warning once to prevent log spam. In
+    // practice, we can take up to 2x the number of keys than capacity, so this is not fatal yet.
+    // But once we hit 99% of capacity, chronicle map recommends a resize, so we should act when
+    // we see this warning. The off-heap is never re-sized. It can take more elements than its
+    // capacity because it pre-allocates a few slabs of memory for hash map and extends a slab when
+    // it's full until the map has reached capacity. This leads to slower hash lookup and insert
+    // performance. Once the capacity limit is hit it doesn't allocate any more slabs but inserts
+    // elements until the currently allocated slabs are full. So, you can insert more elements than
+    // the capacity but it can run over anytime once we hit the limit. Hence the a warning to resize
+    // the off heap. More info at: https://github.com/OpenHFT/Chronicle-Map/tree/master/spec
+    if (USE_OFFHEAP_TAGSTORE && metricIdMap.size() == metricIdMapCapacity) {
+      LOG.warn("The off heap tag store has reached it's capacity of {}. Resize it.",
+          metricIdMapCapacity);
+    }
+
     return newMetricId;
   }
 
-  private void addNameKey(final String key, final Integer id) {
-    if (nameMap.containsKey(key)) {
-      nameMap.get(key).add(id);
+  private void addToMetricIndex(final String key, final Integer id) {
+    if (metricIndex.containsKey(key)) {
+      metricIndex.get(key).add(id);
     } else {
-      nameMap.put(key, RoaringBitmap.bitmapOf(id));
+      metricIndex.put(key, RoaringBitmap.bitmapOf(id));
     }
   }
 }

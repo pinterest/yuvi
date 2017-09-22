@@ -36,7 +36,7 @@ public class FileMetricWriter implements MetricWriter {
           try {
             chunkManager.addMetric(line);
           } catch (Exception e) {
-            LOG.info("Error ingesting line" + line, e);
+            LOG.info("Error ingesting line {} with exception {}", line, e);
           }
         });
       }

@@ -35,7 +35,7 @@ public class ChunkImplTest {
   @Before
   public void setUp() {
     chunk = new ChunkImpl(
-        new MetricsAndTagStoreImpl(new InvertedIndexTagStore(20), new VarBitMetricStore()),
+        new MetricsAndTagStoreImpl(new InvertedIndexTagStore(20, 20), new VarBitMetricStore()),
         new ChunkInfo("test", startTime, endTime));
   }
 

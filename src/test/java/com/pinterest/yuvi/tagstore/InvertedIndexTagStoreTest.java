@@ -41,52 +41,52 @@ public class InvertedIndexTagStoreTest {
 
     assertEquals(ids.get(0), store.get(new Metric(METRIC1, Arrays.asList("k1=v1"))).get());
     assertEquals(store.getMetricNameFromId(ids.get(0)), "metric.1 k1=v1");
-    assertEquals(4, store.getNameMap().size());
-    assertEquals(1, store.getNameMap().get(METRIC1).getCardinality());
-    assertEquals(1, store.getNameMap().get("k1").getCardinality());
-    assertEquals(1, store.getNameMap().get("k1=v1").getCardinality());
-    assertEquals(1, store.getNameMap().get("metric.1 k1=v1").getCardinality());
+    assertEquals(4, store.getMetricIndex().size());
+    assertEquals(1, store.getMetricIndex().get(METRIC1).getCardinality());
+    assertEquals(1, store.getMetricIndex().get("k1").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("k1=v1").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("metric.1 k1=v1").getCardinality());
 
     ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("k1=v2"))));
     assertEquals(ids.get(1), store.get(new Metric(METRIC1, Arrays.asList("k1=v2"))).get());
     assertEquals(store.getMetricNameFromId(ids.get(1)), "metric.1 k1=v2");
-    assertEquals(6, store.getNameMap().size());
-    assertEquals(2, store.getNameMap().get(METRIC1).getCardinality());
-    assertEquals(2, store.getNameMap().get("k1").getCardinality());
-    assertEquals(1, store.getNameMap().get("k1=v1").getCardinality());
-    assertEquals(1, store.getNameMap().get("k1=v2").getCardinality());
-    assertEquals(1, store.getNameMap().get("metric.1 k1=v1").getCardinality());
-    assertEquals(1, store.getNameMap().get("metric.1 k1=v2").getCardinality());
+    assertEquals(6, store.getMetricIndex().size());
+    assertEquals(2, store.getMetricIndex().get(METRIC1).getCardinality());
+    assertEquals(2, store.getMetricIndex().get("k1").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("k1=v1").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("k1=v2").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("metric.1 k1=v1").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("metric.1 k1=v2").getCardinality());
 
     ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("k2=v1"))));
     assertEquals(ids.get(2), store.get(new Metric(METRIC1, Arrays.asList("k2=v1"))).get());
     assertEquals(store.getMetricNameFromId(ids.get(2)), "metric.1 k2=v1");
-    assertEquals(9, store.getNameMap().size());
-    assertEquals(3, store.getNameMap().get(METRIC1).getCardinality());
-    assertEquals(2, store.getNameMap().get("k1").getCardinality());
-    assertEquals(1, store.getNameMap().get("k2").getCardinality());
-    assertEquals(1, store.getNameMap().get("k1=v1").getCardinality());
-    assertEquals(1, store.getNameMap().get("k1=v2").getCardinality());
-    assertEquals(1, store.getNameMap().get("k2=v1").getCardinality());
-    assertEquals(1, store.getNameMap().get("metric.1 k1=v1").getCardinality());
-    assertEquals(1, store.getNameMap().get("metric.1 k1=v2").getCardinality());
-    assertEquals(1, store.getNameMap().get("metric.1 k2=v1").getCardinality());
+    assertEquals(9, store.getMetricIndex().size());
+    assertEquals(3, store.getMetricIndex().get(METRIC1).getCardinality());
+    assertEquals(2, store.getMetricIndex().get("k1").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("k2").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("k1=v1").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("k1=v2").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("k2=v1").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("metric.1 k1=v1").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("metric.1 k1=v2").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("metric.1 k2=v1").getCardinality());
 
     ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("k2=v1"))));
     assertEquals(ids.get(3), store.get(new Metric(METRIC2, Arrays.asList("k2=v1"))).get());
     assertEquals(store.getMetricNameFromId(ids.get(3)), "metric.2 k2=v1");
-    assertEquals(11, store.getNameMap().size());
-    assertEquals(3, store.getNameMap().get(METRIC1).getCardinality());
-    assertEquals(1, store.getNameMap().get(METRIC2).getCardinality());
-    assertEquals(2, store.getNameMap().get("k1").getCardinality());
-    assertEquals(2, store.getNameMap().get("k2").getCardinality());
-    assertEquals(1, store.getNameMap().get("k1=v1").getCardinality());
-    assertEquals(1, store.getNameMap().get("k1=v2").getCardinality());
-    assertEquals(1, store.getNameMap().get("k1=v1").getCardinality());
-    assertEquals(1, store.getNameMap().get("metric.1 k1=v1").getCardinality());
-    assertEquals(1, store.getNameMap().get("metric.1 k1=v2").getCardinality());
-    assertEquals(1, store.getNameMap().get("metric.1 k2=v1").getCardinality());
-    assertEquals(1, store.getNameMap().get("metric.2 k2=v1").getCardinality());
+    assertEquals(11, store.getMetricIndex().size());
+    assertEquals(3, store.getMetricIndex().get(METRIC1).getCardinality());
+    assertEquals(1, store.getMetricIndex().get(METRIC2).getCardinality());
+    assertEquals(2, store.getMetricIndex().get("k1").getCardinality());
+    assertEquals(2, store.getMetricIndex().get("k2").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("k1=v1").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("k1=v2").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("k1=v1").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("metric.1 k1=v1").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("metric.1 k1=v2").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("metric.1 k2=v1").getCardinality());
+    assertEquals(1, store.getMetricIndex().get("metric.2 k2=v1").getCardinality());
   }
 
   @Test

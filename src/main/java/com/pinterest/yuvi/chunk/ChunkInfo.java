@@ -30,6 +30,15 @@ public class ChunkInfo {
   }
 
   @Override
+  public String toString() {
+    return "ChunkInfo{" +
+        "dataSet='" + dataSet + '\'' +
+        ", startTimeSecs=" + startTimeSecs +
+        ", endTimeSecs=" + endTimeSecs +
+        '}';
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

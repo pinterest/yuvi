@@ -22,15 +22,24 @@ public class VarBitMetricStore implements MetricStore {
 
   private static Logger LOG = LoggerFactory.getLogger(VarBitMetricStore.class);
 
+  // TODO: Tune the default metrics size
+  private static final int DEFAULT_METRIC_STORE_SIZE = 10_000;
+
   private HashMap<Long, VarBitTimeSeries> series;
   private final ReentrantReadWriteLock mu;
+
+  public VarBitMetricStore() {
+    this(DEFAULT_METRIC_STORE_SIZE);
+  }
 
   /**
    * Create an empty metric store.
    */
-  public VarBitMetricStore() {
-    series = new HashMap<>();
+  public VarBitMetricStore(int initialSize) {
+    series = new HashMap<>(initialSize);
     mu = new ReentrantReadWriteLock();
+
+    LOG.info("Created a var bit metric store with size {}.", initialSize);
   }
 
   @Override

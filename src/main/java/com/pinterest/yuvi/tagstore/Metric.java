@@ -21,6 +21,7 @@ public final class Metric {
 
   public final List<Tag> tags;
 
+  // This is metric name and sorted raw tag set. It uniquely identifies a metric.
   public final String fullMetricName;
 
   /**
@@ -68,7 +69,7 @@ public final class Metric {
   }
 
   private String getFullMetricName(List<String> rawTags) {
-    TreeSet<String> sortedTags = new TreeSet();
+    TreeSet<String> sortedTags = new TreeSet<>();
     for (String rawTag : rawTags) {
       if (rawTag != null && !rawTag.isEmpty()) {
         sortedTags.add(rawTag.trim());

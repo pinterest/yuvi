@@ -6,14 +6,16 @@ import com.pinterest.yuvi.tagstore.Metric;
 import com.pinterest.yuvi.tagstore.Query;
 import com.pinterest.yuvi.tagstore.TagStore;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Yuvi metric and tag store stores the metrics in gorilla format and the tags in an inverted
- * index.
+ * MetricAndTagStore stores the metrics in gorilla format and the tags in an inverted index.
  *
  * TODO: Batch insert API
  * TODO: synchronization?
@@ -21,12 +23,14 @@ import java.util.stream.Collectors;
  */
 public class MetricsAndTagStoreImpl implements MetricAndTagStore {
 
+  private static final Logger LOG = LoggerFactory.getLogger(MetricsAndTagStoreImpl.class);
   private final TagStore tagStore;
   private final MetricStore metricStore;
 
   public MetricsAndTagStoreImpl(TagStore tagStore, MetricStore metricStore) {
     this.tagStore = tagStore;
     this.metricStore = metricStore;
+    LOG.info("Created a new metric store {} and tag store {}.", metricStore, tagStore);
   }
 
   @Override

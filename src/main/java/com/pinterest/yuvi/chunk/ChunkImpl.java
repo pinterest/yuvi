@@ -5,10 +5,15 @@ import com.pinterest.yuvi.models.TimeSeries;
 import com.pinterest.yuvi.tagstore.Metric;
 import com.pinterest.yuvi.tagstore.Query;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.Map;
 
 public class ChunkImpl implements Chunk {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ChunkImpl.class);
 
   private final MetricAndTagStore store;
   private final ChunkInfo chunkInfo;
@@ -16,6 +21,7 @@ public class ChunkImpl implements Chunk {
   public ChunkImpl(MetricAndTagStore store, ChunkInfo chunkInfo) {
     this.store = store;
     this.chunkInfo = chunkInfo;
+    LOG.info("Created a new chunk {}.", chunkInfo);
   }
 
   @Override
