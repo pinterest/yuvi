@@ -121,7 +121,7 @@ public class ChunkManager {
         Chunk chunk = getChunk(ts);
         chunk.addPoint(metric, ts, value);
       } else {
-        throw new IllegalArgumentException("Invalid metric string " + metricString);
+        throw new IllegalArgumentException("Metric doesn't start with a put: " + metricString);
       }
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid metric string " + metricString, e);

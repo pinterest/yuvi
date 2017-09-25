@@ -33,6 +33,9 @@ public class FileMetricWriter implements MetricWriter {
     try {
       try (Stream<String> lines = Files.lines(metricsFilePath, Charset.defaultCharset())) {
         lines.forEachOrdered(line -> {
+          if (line == null || line.isEmpty()) { // Ignore empty lines
+            return;
+          }
           try {
             chunkManager.addMetric(line);
           } catch (Exception e) {
