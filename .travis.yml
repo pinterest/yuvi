@@ -1,7 +1,11 @@
 language: java
-dist: trusty
 sudo: required
-before_install:
-      - sudo apt-get install thrift-compiler
 jdk:
   - oraclejdk8
+before_install:
+    - sudo apt-get update -qq
+    - sudo apt-get install thrift-compiler
+    - sudo ln -s /usr/bin/thrift /usr/local/bin/thrift
+install:
+    - which thrift
+    - travis_retry mvn clean install
