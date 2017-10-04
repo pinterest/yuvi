@@ -7,6 +7,7 @@ import com.pinterest.yuvi.writer.MetricWriter;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +23,9 @@ import java.util.concurrent.RejectedExecutionException;
  * format used by OpenTSDB kafka plugin. The class is implemented in a way that the ingestion format
  * from kafka is pluggable, so this can be changed easily in future.
  *
- * TODO: Consider configuring a max.poll.interval.ms per KIP-62 if we see timeouts or re-balances.
+ * If both a kafkaTopicName and kafkaTopicPartition are specified, we will assign the consumer to
+ * that partition. If kafkaTopicPartition is empty, we will subscribe to the entire topic.
+ *
  * TODO: Support ingesting messages in OpenTSDB JSON format from Kafka.
  */
 public class KafkaMetricWriter implements MetricWriter {
@@ -33,18 +36,19 @@ public class KafkaMetricWriter implements MetricWriter {
 
   private final KafkaConsumer consumer;
   private final String kafkaTopic;
+  private final int kafkaTopicPartition;
   private long kafkaPollTimeoutMs = 100;
 
   public KafkaMetricWriter(ChunkManager chunkManager, String kafkaTopicName,
-                           String kafkaBootStrapServers, String kafkaClientGroup,
-                           String kafkaAutoCommit, String kafkaAutoCommitInterval,
-                           String kafkaSessionTimeout) {
+                           String kafkaTopicPartition, String kafkaBootStrapServers,
+                           String kafkaClientGroup, String kafkaAutoCommit,
+                           String kafkaAutoCommitInterval, String kafkaSessionTimeout) {
 
     this.chunkManager = chunkManager;
 
     // Create kafka consumer
     this.kafkaTopic = kafkaTopicName;
-    String sessionTimeoutMs = kafkaSessionTimeout;
+    int sessionTimeoutMs = new Integer(kafkaSessionTimeout);
 
     Properties props = new Properties();
     props.put("bootstrap.servers", kafkaBootStrapServers);
@@ -52,11 +56,21 @@ public class KafkaMetricWriter implements MetricWriter {
     props.put("enable.auto.commit", kafkaAutoCommit);
     props.put("auto.commit.interval.ms", kafkaAutoCommitInterval);
     props.put("session.timeout.ms", sessionTimeoutMs);
+    props.put("heartbeat.interval.ms", sessionTimeoutMs/3);
     props.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
     props.put("value.deserializer", "com.pinterest.yuvi.writer.kafka.ThriftTextMessageDeserializer");
     this.consumer = new KafkaConsumer<>(props);
-    consumer.subscribe(Arrays.asList(this.kafkaTopic),
-        new MetricsConsumerRebalanceListener());
+    if (kafkaTopicPartition == null || kafkaTopicPartition.isEmpty()) {
+      this.kafkaTopicPartition = -1;
+      LOG.info("Subscribing to kafka topic {}", this.kafkaTopic);
+      consumer.subscribe(Arrays.asList(this.kafkaTopic),
+          new MetricsConsumerRebalanceListener());
+    } else {
+      this.kafkaTopicPartition = new Integer(kafkaTopicPartition);
+      LOG.info("Assigned to kafka topic {} and partition {}",
+          this.kafkaTopic, this.kafkaTopicPartition);
+      consumer.assign(Arrays.asList(new TopicPartition(this.kafkaTopic, this.kafkaTopicPartition)));
+    }
   }
 
   public void start() {
