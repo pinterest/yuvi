@@ -44,11 +44,28 @@ public class KafkaMetricWriter implements MetricWriter {
                            String kafkaClientGroup, String kafkaAutoCommit,
                            String kafkaAutoCommitInterval, String kafkaSessionTimeout) {
 
+    LOG.info("Kafka params are: kafkaTopicName: {}, kafkaTopicPartition: {}, "
+            + "kafkaBootstrapServers:{}, kafkaClientGroup: {}, kafkaAutoCommit:{}, "
+            + "kafkaAutoCommitInterval: {}, kafkaSessionTimeout: {}", kafkaTopicName,
+        kafkaTopicPartition, kafkaBootStrapServers, kafkaClientGroup, kafkaAutoCommit,
+        kafkaAutoCommitInterval, kafkaSessionTimeout);
+
+    if (chunkManager == null || kafkaTopicPartition == null
+        || kafkaTopicName == null || kafkaTopicName.isEmpty()
+        || kafkaBootStrapServers == null || kafkaBootStrapServers.isEmpty()
+        || kafkaClientGroup == null || kafkaClientGroup.isEmpty()
+        || kafkaAutoCommit == null || kafkaAutoCommit.isEmpty()
+        || kafkaAutoCommitInterval == null || kafkaAutoCommitInterval.isEmpty()
+        || kafkaSessionTimeout == null || kafkaSessionTimeout.isEmpty()) {
+      throw new IllegalArgumentException("Kafka params can't be null or empty.");
+    }
+
     this.chunkManager = chunkManager;
 
     // Create kafka consumer
     this.kafkaTopic = kafkaTopicName;
-    int sessionTimeoutMs = new Integer(kafkaSessionTimeout);
+
+    int sessionTimeoutMs = new Integer(kafkaSessionTimeout.trim());
 
     Properties props = new Properties();
     props.put("bootstrap.servers", kafkaBootStrapServers);
@@ -60,7 +77,7 @@ public class KafkaMetricWriter implements MetricWriter {
     props.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer");
     props.put("value.deserializer", "com.pinterest.yuvi.writer.kafka.ThriftTextMessageDeserializer");
     this.consumer = new KafkaConsumer<>(props);
-    if (kafkaTopicPartition == null || kafkaTopicPartition.isEmpty()) {
+    if (kafkaTopicPartition.isEmpty()) {
       this.kafkaTopicPartition = -1;
       LOG.info("Subscribing to kafka topic {}", this.kafkaTopic);
       consumer.subscribe(Arrays.asList(this.kafkaTopic),
