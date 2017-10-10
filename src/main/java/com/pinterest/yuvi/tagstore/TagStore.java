@@ -54,4 +54,6 @@ public interface TagStore {
   Map<String, Object> getStats();
 
   void close();
+
+  boolean isReadOnly();
 }

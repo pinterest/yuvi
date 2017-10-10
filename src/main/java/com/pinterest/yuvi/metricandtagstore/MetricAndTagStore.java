@@ -21,7 +21,6 @@ public interface MetricAndTagStore {
    */
   List<TimeSeries> getSeries(Query query);
 
-
   /**
    * add a point to an existing time-series, or create a new time-series with the given uuid.
    * @param metric a metric object.
@@ -36,4 +35,9 @@ public interface MetricAndTagStore {
    * Close the metric and tag store cleanly.
    */
   void close();
+
+  /**
+   * Returns true if the metric or tag store is marked as read only.
+   */
+  boolean isReadOnly();
 }

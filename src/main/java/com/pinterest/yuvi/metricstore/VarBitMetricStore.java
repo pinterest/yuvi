@@ -125,4 +125,9 @@ public class VarBitMetricStore implements MetricStore {
   public void close() {
     this.series = null;
   }
+
+  @Override
+  public boolean isReadOnly() {
+    return false;
+  }
 }

@@ -41,7 +41,7 @@ public class ChunkImpl implements Chunk {
 
   @Override
   public boolean isReadOnly() {
-    return false;
+    return store.isReadOnly();
   }
 
   @Override

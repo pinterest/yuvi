@@ -135,4 +135,9 @@ public class OffHeapVarBitMetricStore implements MetricStore {
   public void close() {
     return;
   }
+
+  @Override
+  public boolean isReadOnly() {
+    return true;
+  }
 }

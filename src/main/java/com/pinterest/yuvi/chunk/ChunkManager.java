@@ -123,6 +123,9 @@ public class ChunkManager {
       } else {
         throw new IllegalArgumentException("Metric doesn't start with a put: " + metricString);
       }
+    } catch (UnsupportedOperationException e) {
+      LOG.error("Inserting metric {} failed with exception.", metricString, e);
+      throw new IllegalArgumentException("Insertion into a read only store." + metricString);
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid metric string " + metricString, e);
     }

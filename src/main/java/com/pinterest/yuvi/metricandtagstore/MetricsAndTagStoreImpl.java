@@ -70,7 +70,11 @@ public class MetricsAndTagStoreImpl implements MetricAndTagStore {
 
   @Override
   public void close() {
-    tagStore.close();
     metricStore.close();
+  }
+
+  @Override
+  public boolean isReadOnly() {
+    return tagStore.isReadOnly() || metricStore.isReadOnly();
   }
 }

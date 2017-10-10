@@ -33,4 +33,6 @@ public interface MetricStore {
   Map getSeriesMap();
 
   void close();
+
+  boolean isReadOnly();
 }

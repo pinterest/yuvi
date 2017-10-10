@@ -478,6 +478,11 @@ public class InvertedIndexTagStore implements TagStore {
     this.metricIndex = null;
   }
 
+  @Override
+  public boolean isReadOnly() {
+    return false;
+  }
+
   @VisibleForTesting
   Map<String, RoaringBitmap> getMetricIndex() {
     return metricIndex;
