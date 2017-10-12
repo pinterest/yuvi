@@ -186,8 +186,8 @@ public class ChunkManager {
       return pointsByMetricName.entrySet().stream()
           .map(metricKey -> {
             List<Point> points = metricKey.getValue().stream()
-                    .flatMap(List::stream)
-                    .collect(toList());
+                .flatMap(List::stream)
+                .collect(toList());
             return new TimeSeries(metricKey.getKey(), Points.dedup(points));
           })
           .collect(toList());
@@ -244,21 +244,52 @@ public class ChunkManager {
   }
 
   public void toReadOnlyChunks(List<Map.Entry<Long, Chunk>> expiredChunks) {
-    LOG.info("Chunks past cut off are: {}", expiredChunks);
+    LOG.info("Chunks past on heap cut off are: {}", expiredChunks);
 
     expiredChunks.forEach(entry -> {
-      final Chunk chunk = entry.getValue();
-      LOG.info("Moving chunk {} to off heap.", chunk.info());
+      if (chunkMap.containsKey(entry.getKey())) {
+        final Chunk chunk = entry.getValue();
+        LOG.info("Moving chunk {} to off heap.", chunk.info());
 
-      Chunk readOnlyChunk = toOffHeapChunk(chunk);
+        Chunk readOnlyChunk = toOffHeapChunk(chunk);
 
-      synchronized (chunkMapSync) {
-        Chunk oldChunk = chunkMap.put(entry.getKey(), readOnlyChunk);
-        // Close the old chunk to free up memory faster.
-        oldChunk.close();
+        synchronized (chunkMapSync) {
+          Chunk oldChunk = chunkMap.put(entry.getKey(), readOnlyChunk);
+          // Close the old chunk to free up memory faster.
+          oldChunk.close();
+        }
+
+        LOG.info("Moved chunk {} to off heap.", chunk.info());
+      } else {
+        LOG.warn("Possible bug or race condition! Chunk {} doesn't exist in chunk map {}.",
+            entry, chunkMap);
       }
+    });
+  }
 
-      LOG.info("Moved chunk {} to off heap.", chunk.info());
+  public void removeStaleChunks(List<Map.Entry<Long, Chunk>> staleChunks) {
+    LOG.info("Stale chunks to be removed are: {}", staleChunks);
+
+    if (chunkMap.isEmpty()) {
+      LOG.warn("Possible bug or race condition. There are no chunks in chunk map.");
+    }
+
+    staleChunks.forEach(entry -> {
+      if (chunkMap.containsKey(entry.getKey())) {
+        final Chunk chunk = entry.getValue();
+        String chunkInfo = chunk.info().toString();
+        LOG.info("Deleting chunk {}.", chunkInfo);
+
+        synchronized (chunkMapSync) {
+          chunkMap.remove(entry.getKey());
+        }
+        // Close the chunk to free up resources.
+        chunk.close();
+        LOG.info("Deleted chunk {}.", chunkInfo);
+      } else {
+        LOG.warn("Possible bug or race condition! Chunk {} doesn't exist in chunk map {}.",
+            entry, chunkMap);
+      }
     });
   }
 }

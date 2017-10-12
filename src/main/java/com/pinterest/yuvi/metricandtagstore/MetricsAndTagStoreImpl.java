@@ -68,6 +68,9 @@ public class MetricsAndTagStoreImpl implements MetricAndTagStore {
     return stats;
   }
 
+  /**
+   * Currently, tag store is shared among chunks. So only close the metric store.
+   */
   @Override
   public void close() {
     metricStore.close();

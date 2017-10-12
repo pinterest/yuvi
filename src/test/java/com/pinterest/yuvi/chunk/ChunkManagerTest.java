@@ -15,9 +15,11 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class ChunkManagerTest {
 
@@ -29,6 +31,14 @@ public class ChunkManagerTest {
   private final long testTs = 100L;
   private final double testValue = 10;
 
+  private final String testMetricName = "testMetric";
+  private final String inputTagString = "host=h1 dc=dc1";
+  private final String expectedMetricName = testMetricName + " dc=dc1 host=h1";
+
+  private final long startTime = 1488499200;  // Fri, 03 Mar 2017 00:00:00 UTC
+  private final long startTimePlusTwoHours = startTime + 3600 * 2;
+  private final long startTimePlusFourHours = startTime + 3600 * 4;
+
   @Before
   public void setUp() {
     chunkManager = new ChunkManager("test", 1000);
@@ -36,8 +46,6 @@ public class ChunkManagerTest {
 
   @Test
   public void testChunkCreation() {
-    long startTime = 1488499200;  // Fri, 03 Mar 2017 00:00:00 UTC
-
     assertTrue(chunkManager.getChunkMap().isEmpty());
 
     Chunk testChunk1 = chunkManager.getChunk(startTime + 1);
@@ -94,12 +102,7 @@ public class ChunkManagerTest {
 
   @Test
   public void testMultipleChunkQuery() {
-    long startTime = 1488499200;  // Fri, 03 Mar 2017 00:00:00 UTC
-    long startTimePlusTwoHours = startTime + 3600 * 2;
-
-    final String testMetricName = "testMetric";
-    final String inputTagString = "host=h1 dc=dc1";
-    final String expectedMetricName = testMetricName + " dc=dc1 host=h1";
+    assertTrue(chunkManager.getChunkMap().isEmpty());
 
     // 1 data point per chunk, 1 metric
     chunkManager.addMetric(
@@ -143,10 +146,9 @@ public class ChunkManagerTest {
 
     // Add different metrics to same chunk
     String additionalTag = " instance=1";
-    chunkManager
-        .addMetric(MetricUtils
-            .makeMetricString(testMetricName, inputTagString + additionalTag, startTime + 1,
-                testValue * 2));
+    chunkManager.addMetric(MetricUtils
+        .makeMetricString(testMetricName, inputTagString + additionalTag, startTime + 1,
+            testValue * 2));
 
     chunkManager.addMetric(MetricUtils
         .makeMetricString(testMetricName, inputTagString + additionalTag, startTimePlusTwoHours + 1,
@@ -178,10 +180,9 @@ public class ChunkManagerTest {
         new Object[]{expectedTimeSeries2}));
 
     // Add a duplicate point and query it. Duplicate points are not allowed.
-    chunkManager
-        .addMetric(MetricUtils
-            .makeMetricString(testMetricName, inputTagString + additionalTag, startTime + 1,
-                testValue * 2));
+    chunkManager.addMetric(MetricUtils
+        .makeMetricString(testMetricName, inputTagString + additionalTag, startTime + 1,
+            testValue * 2));
     List<TimeSeries> timeSeries5 = chunkManager.query(
         Query.parse(testMetricName + additionalTag),
         startTime,
@@ -199,20 +200,16 @@ public class ChunkManagerTest {
     // Add a different metric name and query it.
     final String testMetricName1 = "testMetric1";
     final String expectedMetricName1 = "testMetric1" + " dc=dc1 host=h1";
-    chunkManager
-        .addMetric(
-            MetricUtils
-                .makeMetricString(testMetricName1, inputTagString, startTime + 2, testValue));
+    chunkManager.addMetric(MetricUtils
+        .makeMetricString(testMetricName1, inputTagString, startTime + 2, testValue));
     chunkManager.addMetric(MetricUtils
         .makeMetricString(testMetricName1, inputTagString, startTimePlusTwoHours + 2, testValue));
-    chunkManager
-        .addMetric(MetricUtils
-            .makeMetricString(testMetricName1, inputTagString, startTime + (3600 * 4) + 2,
-                testValue));
-    chunkManager
-        .addMetric(MetricUtils
-            .makeMetricString(testMetricName1, inputTagString + additionalTag, startTime + 2,
-                testValue * 2));
+    chunkManager.addMetric(MetricUtils
+        .makeMetricString(testMetricName1, inputTagString, startTime + (3600 * 4) + 2,
+            testValue));
+    chunkManager.addMetric(MetricUtils
+        .makeMetricString(testMetricName1, inputTagString + additionalTag, startTime + 2,
+            testValue * 2));
     chunkManager.addMetric(MetricUtils
         .makeMetricString(testMetricName1, inputTagString + additionalTag,
             startTimePlusTwoHours + 2, testValue * 3));
@@ -279,5 +276,88 @@ public class ChunkManagerTest {
   public void testMissingTs() {
     String metric = "put a.b 5.1 c=d";
     chunkManager.addMetric(metric);
+  }
+
+  // TODO: Currently, toReadOnlyChunks and toOffHeapChunk is tested by OffHeapChunkManager.
+  // Add some tests here also.
+
+  @Test
+  public void testRemoveStaleChunks() {
+    final Map.Entry<Long, Chunk> fakeMapEntry = new Map.Entry<Long, Chunk>() {
+      @Override
+      public Long getKey() {
+        return 100L;
+      }
+
+      @Override
+      public Chunk getValue() {
+        return null;
+      }
+
+      @Override
+      public Chunk setValue(Chunk value) {
+        return null;
+      }
+    };
+
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    // Delete an entry from an empty map.
+    chunkManager.removeStaleChunks(Collections.EMPTY_LIST);
+    chunkManager.removeStaleChunks(Arrays.asList(fakeMapEntry));
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+
+    chunkManager.addMetric(MetricUtils
+        .makeMetricString(testMetricName, inputTagString, startTime + 1, testValue));
+
+    assertEquals(1, chunkManager.getChunkMap().size());
+    ArrayList<Map.Entry<Long, Chunk>> chunks = new ArrayList<>();
+    for (Map.Entry entry : chunkManager.getChunkMap().entrySet()) {
+      chunks.add(entry);
+    }
+    chunkManager.removeStaleChunks(chunks);
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+
+    // Remove 2 chunks
+    chunkManager.addMetric(MetricUtils
+        .makeMetricString(testMetricName, inputTagString, startTime + 1, testValue));
+    chunkManager.addMetric(MetricUtils
+        .makeMetricString(testMetricName, inputTagString, startTimePlusTwoHours + 1, testValue));
+    assertEquals(2, chunkManager.getChunkMap().size());
+    ArrayList<Map.Entry<Long, Chunk>> chunks2 = new ArrayList<>();
+    for (Map.Entry<Long, Chunk> entry : chunkManager.getChunkMap().entrySet()) {
+      chunks2.add(entry);
+    }
+    chunkManager.removeStaleChunks(chunks2);
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+
+    // Remove 2 of 3 chunks
+    chunkManager.addMetric(MetricUtils
+        .makeMetricString(testMetricName, inputTagString, startTime + 1, testValue));
+    chunkManager.addMetric(MetricUtils
+        .makeMetricString(testMetricName, inputTagString, startTimePlusTwoHours, testValue));
+    chunkManager.addMetric(MetricUtils
+        .makeMetricString(testMetricName, inputTagString, startTimePlusFourHours, testValue));
+    assertEquals(3, chunkManager.getChunkMap().size());
+    ArrayList<Map.Entry<Long, Chunk>> chunks3 = new ArrayList<>();
+    for (Map.Entry<Long, Chunk> entry : chunkManager.getChunkMap().entrySet()) {
+      if (entry.getKey() < startTimePlusFourHours) {
+        chunks3.add(entry);
+      }
+    }
+    chunkManager.removeStaleChunks(chunks3);
+    assertEquals(1, chunkManager.getChunkMap().size());
+    assertEquals(startTimePlusFourHours,
+        chunkManager.getChunkMap().get(startTimePlusFourHours).info().startTimeSecs);
+
+    // Delete a non-existent chunk.
+    chunkManager.removeStaleChunks(Arrays.asList(fakeMapEntry));
+    assertEquals(1, chunkManager.getChunkMap().size());
+    assertEquals(startTimePlusFourHours,
+        chunkManager.getChunkMap().get(startTimePlusFourHours).info().startTimeSecs);
+
+    chunkManager.removeStaleChunks(Collections.EMPTY_LIST);
+    assertEquals(1, chunkManager.getChunkMap().size());
+    assertEquals(startTimePlusFourHours,
+        chunkManager.getChunkMap().get(startTimePlusFourHours).info().startTimeSecs);
   }
 }

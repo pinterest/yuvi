@@ -34,6 +34,8 @@ public class OffHeapVarBitMetricStore implements MetricStore {
 
   private static final String offHeapNamePrefix = "yuvi_timeseries";
 
+  private final String chunkInfo;
+
   public OffHeapVarBitMetricStore(long size, String chunkInfo) {
     this(size, DEFAULT_VALUE_SIZE, chunkInfo);
   }
@@ -43,6 +45,8 @@ public class OffHeapVarBitMetricStore implements MetricStore {
   }
 
   public OffHeapVarBitMetricStore(long size, int valueSize, String chunkInfo, String dir) {
+    this.chunkInfo = chunkInfo;
+
     ChronicleMapBuilder<LongValue, ByteBuffer> mapBuilder = ChronicleMap
         .of(LongValue.class, ByteBuffer.class)
         .entries(size)
@@ -133,7 +137,13 @@ public class OffHeapVarBitMetricStore implements MetricStore {
 
   @Override
   public void close() {
-    return;
+    ChronicleMap timeSeries = (ChronicleMap) this.timeSeries;
+    String info = timeSeries.toString();
+    LOG.info("Closing chronicle map {}", info);
+    // Closing the timeSeries frees up all the resources associated with this map if there are no
+    // other references to it. So, make sure all the references to the map are closed.
+    timeSeries.close();
+    LOG.info("Closed chronicle map {}.", info);
   }
 
   @Override

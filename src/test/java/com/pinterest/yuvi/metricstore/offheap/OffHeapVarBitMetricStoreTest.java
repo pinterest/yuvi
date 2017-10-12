@@ -8,6 +8,7 @@ import com.pinterest.yuvi.metricstore.VarBitMetricStore;
 import com.pinterest.yuvi.metricstore.VarBitTimeSeries;
 import com.pinterest.yuvi.models.Point;
 
+import net.openhft.chronicle.hash.ChronicleHashClosedException;
 import org.junit.Test;
 
 import java.time.Instant;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 public class OffHeapVarBitMetricStoreTest {
+
   final static double delta = 0.00001;
   final String testFileName = "";
 
@@ -29,6 +31,27 @@ public class OffHeapVarBitMetricStoreTest {
   public void testReadOnlyStore() {
     MetricStore store = new OffHeapVarBitMetricStore(1, testFileName);
     store.addPoint(1, 1, 1);
+  }
+
+  @Test(expected = ChronicleHashClosedException.class)
+  public void testCloseWithoutPersistedFile() {
+    MetricStore heapStore = new VarBitMetricStore();
+    long uuid1 = 1;
+    long ts = Instant.now().getEpochSecond();
+    double value = 100;
+
+    heapStore.addPoint(uuid1, ts, value);
+    OffHeapVarBitMetricStore offheapStore1 =
+        OffHeapVarBitMetricStore.toOffHeapStore(getSeriesMap(heapStore), testFileName);
+
+    assertEquals(1, offheapStore1.getSeriesMap().size());
+    List<Point> points = offheapStore1.getSeries(uuid1);
+    assertEquals(1, points.size());
+    assertEquals(ts, points.get(0).getTs());
+    assertEquals(value, points.get(0).getVal(), delta);
+
+    offheapStore1.close();
+    offheapStore1.getSeriesMap().size();
   }
 
   @Test
@@ -92,6 +115,8 @@ public class OffHeapVarBitMetricStoreTest {
     assertEquals(ts + 3, points42.get(1).getTs());
     assertEquals(value + 3, points42.get(1).getVal(), delta);
   }
+
+  // TODO: Create tests for creating, using and deleting persisted file.
 
   @SuppressWarnings("unchecked")
   private Map<Long, VarBitTimeSeries> getSeriesMap(MetricStore heapStore) {

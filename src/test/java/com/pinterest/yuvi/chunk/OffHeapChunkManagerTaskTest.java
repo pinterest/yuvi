@@ -14,7 +14,6 @@ import org.hamcrest.collection.IsIterableContainingInAnyOrder;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.sql.Time;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,6 +29,7 @@ public class OffHeapChunkManagerTaskTest {
   private final long startTimePlusTwoHoursSecs = startTimeSecs + 3600 * 2;
   private final long startTimePlusFourHoursSecs = startTimeSecs + 3600 * 4;
   private final long startTimePlusSixHoursSecs = startTimeSecs + 3600 * 6;
+  private final long startTimePlusEightHoursSecs = startTimeSecs + 3600 * 8;
 
   private final long DEFAULT_CHUNK_READ_ONLY_THRESHOLD_SECS = DEFAULT_CHUNK_DURATION.getSeconds();
 
@@ -63,7 +63,7 @@ public class OffHeapChunkManagerTaskTest {
 
     assertEquals(0, offHeapChunkManagerTask.detectChunksPastCutOff(startTimeSecs));
     assertEquals(0, offHeapChunkManagerTask.detectChunksPastCutOff(startTimeSecs + 1));
-    assertEquals(0, offHeapChunkManagerTask.detectChunksPastCutOff(startTimeSecs + 3600 * 2 - 1 ));
+    assertEquals(0, offHeapChunkManagerTask.detectChunksPastCutOff(startTimeSecs + 3600 * 2 - 1));
     assertEquals(1, offHeapChunkManagerTask.detectChunksPastCutOff(startTimeSecs + 3600 * 2));
 
     // Expect zero since there are no on-heap chunks.
@@ -158,7 +158,7 @@ public class OffHeapChunkManagerTaskTest {
         testMetricName, inputTagString1, startTimePlusTwoHoursSecs + 1, testValue));
     assertEquals(2, chunkManager.getChunkMap().size());
     assertEquals(0, detectReadOnlyChunks(startTimeSecs
-        +  DEFAULT_CHUNK_READ_ONLY_THRESHOLD_SECS + DEFAULT_METRICS_DELAY_SECS));
+        + DEFAULT_CHUNK_READ_ONLY_THRESHOLD_SECS + DEFAULT_METRICS_DELAY_SECS));
     assertEquals(0, detectReadOnlyChunks(startTimeSecs
         + DEFAULT_CHUNK_READ_ONLY_THRESHOLD_SECS + DEFAULT_METRICS_DELAY_SECS + 3600));
     assertEquals(1, detectReadOnlyChunks(startTimeSecs
@@ -184,15 +184,174 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testDetectReadOnlyChunksWithMetricsDelay() {
+  public void testRunAtWithOneChunk() {
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimeSecs));
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    assertEquals(0, getReadOnlyChunkCount(chunkManager));
+
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimeSecs + 1, testValue));
+    assertEquals(1, chunkManager.getChunkMap().size());
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimeSecs));
+    assertEquals(1, chunkManager.getChunkMap().size());
+    assertEquals(0, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusTwoHoursSecs));
+    assertEquals(1, chunkManager.getChunkMap().size());
+    assertEquals(0, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusTwoHoursSecs
+        + DEFAULT_METRICS_DELAY_SECS));
+    assertEquals(1, chunkManager.getChunkMap().size());
+    assertEquals(1, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusFourHoursSecs));
+    assertEquals(1, chunkManager.getChunkMap().size());
+    assertEquals(1, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusEightHoursSecs));
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    assertEquals(0, getReadOnlyChunkCount(chunkManager));
+  }
+
+  @Test
+  public void testRunAtWithMultipleChunks() {
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimeSecs));
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    assertEquals(0, getReadOnlyChunkCount(chunkManager));
+
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimeSecs + 1, testValue));
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimePlusTwoHoursSecs, testValue));
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimePlusFourHoursSecs, testValue));
+    assertEquals(3, chunkManager.getChunkMap().size());
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimeSecs));
+    assertEquals(3, chunkManager.getChunkMap().size());
+    assertEquals(0, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusTwoHoursSecs));
+    assertEquals(3, chunkManager.getChunkMap().size());
+    assertEquals(0, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusTwoHoursSecs
+        + DEFAULT_METRICS_DELAY_SECS));
+    assertEquals(3, chunkManager.getChunkMap().size());
+    assertEquals(1, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusFourHoursSecs));
+    assertEquals(3, chunkManager.getChunkMap().size());
+    assertEquals(1, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusFourHoursSecs
+        + DEFAULT_METRICS_DELAY_SECS));
+    assertEquals(3, chunkManager.getChunkMap().size());
+    assertEquals(2, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusSixHoursSecs));
+    assertEquals(3, chunkManager.getChunkMap().size());
+    assertEquals(2, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusSixHoursSecs
+        + DEFAULT_METRICS_DELAY_SECS));
+    assertEquals(3, chunkManager.getChunkMap().size());
+    assertEquals(3, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusEightHoursSecs));
+    assertEquals(2, chunkManager.getChunkMap().size());
+    assertEquals(2, getReadOnlyChunkCount(chunkManager));
+
+    // Add a stale data point.
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimeSecs, testValue));
+    assertEquals(3, chunkManager.getChunkMap().size());
+    assertEquals(2, getReadOnlyChunkCount(chunkManager));
+
+    // newly added stale data is also deleted
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusEightHoursSecs + 2 * 3600));
+    assertEquals(1, chunkManager.getChunkMap().size());
+    assertEquals(1, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusEightHoursSecs + 4 * 3600));
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    assertEquals(0, getReadOnlyChunkCount(chunkManager));
+  }
+
+  @Test
+  public void testRunAtWithOverlappingOperations() {
+    final int metricsDelaySecs = 0;
+    offHeapChunkManagerTask =
+        new OffHeapChunkManagerTask(chunkManager, metricsDelaySecs, 4 * 3600);
+
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimeSecs));
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    assertEquals(0, getReadOnlyChunkCount(chunkManager));
+
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimeSecs + 1, testValue));
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimePlusTwoHoursSecs, testValue));
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimePlusFourHoursSecs, testValue));
+    assertEquals(3, chunkManager.getChunkMap().size());
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimeSecs));
+    assertEquals(3, chunkManager.getChunkMap().size());
+    assertEquals(0, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusTwoHoursSecs));
+    assertEquals(3, chunkManager.getChunkMap().size());
+    assertEquals(1, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusFourHoursSecs));
+    assertEquals(3, chunkManager.getChunkMap().size());
+    assertEquals(2, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusSixHoursSecs));
+    assertEquals(2, chunkManager.getChunkMap().size());
+    assertEquals(2, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusSixHoursSecs + 10 * 60));
+    assertEquals(2, chunkManager.getChunkMap().size());
+    assertEquals(2, getReadOnlyChunkCount(chunkManager));
+
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusEightHoursSecs));
+    assertEquals(1, chunkManager.getChunkMap().size());
+    assertEquals(1, getReadOnlyChunkCount(chunkManager));
+
+    // Add a stale data point.
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimeSecs, testValue));
+    assertEquals(2, chunkManager.getChunkMap().size());
+    assertEquals(1, getReadOnlyChunkCount(chunkManager));
+
+    // newly added stale data is also deleted
+    offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimePlusEightHoursSecs + 2 * 3600));
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    assertEquals(0, getReadOnlyChunkCount(chunkManager));
+  }
+
+  @Test
+  public void testChunkManagementWithCustomDelays() {
     final int metricsDelaySecs = 5 * 60;
-    offHeapChunkManagerTask = new OffHeapChunkManagerTask(chunkManager, metricsDelaySecs);
+    offHeapChunkManagerTask = new OffHeapChunkManagerTask(chunkManager, metricsDelaySecs,
+        4 * 60 * 60);
 
     assertTrue(chunkManager.getChunkMap().isEmpty());
     assertEquals(0, detectReadOnlyChunks(startTimeSecs));
     assertEquals(0, detectReadOnlyChunks(startTimeSecs + 1));
     assertEquals(0, detectReadOnlyChunks(startTimeSecs + 3600 * 2));
     assertEquals(0, detectReadOnlyChunks(startTimeSecs + 3600 * 3));
+    assertEquals(0, deleteStaleData(startTimeSecs));
+    assertEquals(0, deleteStaleData(startTimeSecs + 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 2));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 3));
 
     chunkManager.addMetric(MetricUtils.makeMetricString(
         testMetricName, inputTagString1, startTimeSecs + 1, testValue));
@@ -211,7 +370,6 @@ public class OffHeapChunkManagerTaskTest {
         + DEFAULT_CHUNK_READ_ONLY_THRESHOLD_SECS + metricsDelaySecs));
     assertEquals(1, chunkManager.getChunkMap().size());
     assertEquals(1, getReadOnlyChunkCount(chunkManager));
-
     // Expect zero since there are no on-heap chunks.
     assertEquals(0, detectReadOnlyChunks(startTimeSecs
         + DEFAULT_CHUNK_READ_ONLY_THRESHOLD_SECS + metricsDelaySecs + 1));
@@ -220,7 +378,7 @@ public class OffHeapChunkManagerTaskTest {
         testMetricName, inputTagString1, startTimePlusTwoHoursSecs + 1, testValue));
     assertEquals(2, chunkManager.getChunkMap().size());
     assertEquals(0, detectReadOnlyChunks(startTimeSecs
-        +  DEFAULT_CHUNK_READ_ONLY_THRESHOLD_SECS + metricsDelaySecs));
+        + DEFAULT_CHUNK_READ_ONLY_THRESHOLD_SECS + metricsDelaySecs));
     assertEquals(0, detectReadOnlyChunks(startTimeSecs
         + DEFAULT_CHUNK_READ_ONLY_THRESHOLD_SECS + metricsDelaySecs + 3600));
     assertEquals(1, detectReadOnlyChunks(startTimeSecs
@@ -243,6 +401,24 @@ public class OffHeapChunkManagerTaskTest {
     assertEquals(3, chunkManager.getChunkMap().size());
     assertEquals(0, detectReadOnlyChunks(startTimeSecs
         + (3 * DEFAULT_CHUNK_READ_ONLY_THRESHOLD_SECS) + metricsDelaySecs));
+
+    assertEquals(3, chunkManager.getChunkMap().size());
+    assertEquals(0, deleteStaleData(startTimePlusTwoHoursSecs));
+    assertEquals(0, deleteStaleData(startTimePlusFourHoursSecs));
+    assertEquals(1, deleteStaleData(startTimePlusSixHoursSecs));
+    assertEquals(2, chunkManager.getChunkMap().size());
+    chunkManager.getChunkMap().forEach((k, v) ->
+        assertTrue(k.longValue() >= startTimePlusTwoHoursSecs));
+    assertEquals(0, deleteStaleData(startTimePlusSixHoursSecs + 3600));
+    assertEquals(0, deleteStaleData(startTimePlusEightHoursSecs - 1));
+    assertEquals(1, deleteStaleData(startTimePlusEightHoursSecs));
+    assertEquals(1, chunkManager.getChunkMap().size());
+    chunkManager.getChunkMap().forEach((k, v) ->
+        assertTrue(k.longValue() >= startTimePlusFourHoursSecs));
+    assertEquals(0, deleteStaleData(startTimePlusEightHoursSecs + 1));
+    assertEquals(0, deleteStaleData(startTimePlusEightHoursSecs + 3600));
+    assertEquals(1, deleteStaleData(startTimePlusEightHoursSecs + 2 * 3600 + 2));
+    assertTrue(chunkManager.getChunkMap().isEmpty());
   }
 
   private long getReadOnlyChunkCount(ChunkManager chunkManager) {
@@ -253,7 +429,7 @@ public class OffHeapChunkManagerTaskTest {
     return offHeapChunkManagerTask.detectReadOnlyChunks(Instant.ofEpochSecond(startTimeSecs));
   }
 
-  @Test(expected =  IllegalArgumentException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testInsertionIntoOffHeapStore() {
     assertTrue(chunkManager.getChunkMap().isEmpty());
 
@@ -353,11 +529,11 @@ public class OffHeapChunkManagerTaskTest {
     final TimeSeries expectedTimeSeries3 = new TimeSeries(expectedMetricName1,
         Arrays.asList(new Point(startTimeSecs + 1, testValue),
             new Point(startTimePlusTwoHoursSecs + 1, testValue * 2),
-            new Point(startTimePlusFourHoursSecs + 1 , testValue * 3)));
+            new Point(startTimePlusFourHoursSecs + 1, testValue * 3)));
     final TimeSeries expectedTimeSeries32 = new TimeSeries(expectedMetricName2,
         Arrays.asList(new Point(startTimeSecs + 1, testValue),
             new Point(startTimePlusTwoHoursSecs + 1, testValue * 2),
-            new Point(startTimePlusFourHoursSecs + 1 , testValue * 3)));
+            new Point(startTimePlusFourHoursSecs + 1, testValue * 3)));
     assertTimeSeries(expectedTimeSeries3, expectedTimeSeries32, timeSeries5);
 
     moveOffHeapAndCheck(3, 1);
@@ -389,5 +565,195 @@ public class OffHeapChunkManagerTaskTest {
     assertEquals(expectedReadOnlyChunksSize, readOnlyChunksSize);
     assertEquals(expectedSize, chunkManager.getChunkMap().size());
     assertEquals(expectedSize, getReadOnlyChunkCount(chunkManager));
+  }
+
+  @Test
+  public void testDeleteStaleChunks() {
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 2));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 3));
+
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimeSecs + 1, testValue));
+    final List<TimeSeries> timeSeries = queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 3);
+    assertEquals(1, timeSeries.size());
+    assertEquals(1, chunkManager.getChunkMap().size());
+
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 - 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 + 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 2 - 1));
+    assertEquals(1, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 2));
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 2));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 3));
+    final List<TimeSeries> timeSeries2 = queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 3);
+    assertTrue(timeSeries2.isEmpty());
+
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimeSecs + 1, testValue));
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimePlusTwoHoursSecs + 1, testValue));
+    assertEquals(2, chunkManager.getChunkMap().size());
+    final List<TimeSeries> timeSeries3 = queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 3);
+    assertEquals(1, timeSeries3.size());
+    assertEquals(2, chunkManager.getChunkMap().size());
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 - 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 + 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 2 - 1));
+    assertEquals(1, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 2));
+    assertEquals(1, chunkManager.getChunkMap().size());
+    chunkManager.getChunkMap()
+        .forEach((k, v) -> assertEquals(startTimePlusTwoHoursSecs, k.longValue()));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 2 + 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 3 - 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 3));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 3 + 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 4 - 1));
+    assertEquals(1, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 4 + 1));
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+
+    testDeleteMultipleChunks(0); // Chunks on heap
+    testDeleteMultipleChunks(1); // Oldest chunk off heap.
+    testDeleteMultipleChunks(2); // 2 oldest chunks off heap.
+    testDeleteMultipleChunks(3); // 3 oldest chunks off heap.
+    testDeleteMultipleChunks(4); // All chunks off heap.
+  }
+
+  private void testDeleteMultipleChunks(int offHeapChunkCount) {
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimePlusSixHoursSecs + 1, testValue));
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimePlusFourHoursSecs + 1, testValue));
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimePlusTwoHoursSecs + 1, testValue));
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimeSecs + 1, testValue));
+    assertEquals(4, chunkManager.getChunkMap().size());
+
+    if (offHeapChunkCount > 0) {
+      offHeapChunkManagerTask.detectChunksPastCutOff(startTimePlusTwoHoursSecs);
+    }
+    if (offHeapChunkCount > 1) {
+      offHeapChunkManagerTask.detectChunksPastCutOff(startTimePlusFourHoursSecs);
+      assertEquals(2, getReadOnlyChunkCount(chunkManager));
+    }
+    if (offHeapChunkCount > 2) {
+      offHeapChunkManagerTask.detectChunksPastCutOff(startTimePlusSixHoursSecs);
+      assertEquals(3, getReadOnlyChunkCount(chunkManager));
+    }
+    if (offHeapChunkCount > 3) {
+      offHeapChunkManagerTask.detectChunksPastCutOff(startTimePlusEightHoursSecs);
+      assertEquals(4, getReadOnlyChunkCount(chunkManager));
+    }
+
+    assertEquals(offHeapChunkCount, getReadOnlyChunkCount(chunkManager));
+    assertEquals(4, chunkManager.getChunkMap().size());
+    final List<TimeSeries> timeSeries4 = queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 8);
+    assertEquals(1, timeSeries4.size());
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 - 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 + 1));
+    assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 2 - 1));
+    assertEquals(2, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 4 + 1));
+    assertEquals(2, chunkManager.getChunkMap().size());
+    assertEquals(1, queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 8).size());
+    chunkManager.getChunkMap().forEach((k, v) ->
+        assertTrue(startTimePlusFourHoursSecs == k.longValue()
+            || startTimePlusSixHoursSecs == k.longValue()));
+    assertEquals(1, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 6 + 1));
+    assertEquals(1, queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 8).size());
+    assertEquals(1, chunkManager.getChunkMap().size());
+    chunkManager.getChunkMap().forEach((k, v) ->
+        assertTrue(startTimePlusSixHoursSecs == k.longValue()));
+    assertEquals(1, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 8 + 1));
+    assertTrue(queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 8).isEmpty());
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+  }
+
+  private int deleteStaleData(long startTimeSecs) {
+    return offHeapChunkManagerTask.deleteStaleData(Instant.ofEpochSecond(startTimeSecs));
+  }
+
+  @Test
+  public void testDeleteStaleData() {
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    assertEquals(0, deleteStaleData(startTimeSecs));
+    assertEquals(0, deleteStaleData(startTimeSecs + 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 2));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 3));
+
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimeSecs + 1, testValue));
+    final List<TimeSeries> timeSeries = queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 3);
+    assertEquals(1, timeSeries.size());
+    assertEquals(1, chunkManager.getChunkMap().size());
+
+    assertEquals(0, deleteStaleData(startTimeSecs));
+    assertEquals(0, deleteStaleData(startTimeSecs + 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 - 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 + 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 2 - 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 2));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 3));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 4));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 5));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 6));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 7));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 8 - 1));
+    assertEquals(1, deleteStaleData(startTimeSecs + 3600 * 8));
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+    assertEquals(0, deleteStaleData(startTimeSecs));
+    assertEquals(0, deleteStaleData(startTimeSecs + 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 2));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 8));
+    final List<TimeSeries> timeSeries2 = queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 3);
+    assertTrue(timeSeries2.isEmpty());
+
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimeSecs + 1, testValue));
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimePlusTwoHoursSecs + 1, testValue));
+    assertEquals(2, chunkManager.getChunkMap().size());
+    final List<TimeSeries> timeSeries3 = queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 3);
+    assertEquals(1, timeSeries3.size());
+    assertEquals(2, chunkManager.getChunkMap().size());
+    assertEquals(0, deleteStaleData(startTimeSecs));
+    assertEquals(0, deleteStaleData(startTimeSecs + 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 - 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 + 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 2 - 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 2));
+    assertEquals(1, deleteStaleData(startTimeSecs + 3600 * 8));
+    assertEquals(1, chunkManager.getChunkMap().size());
+    chunkManager.getChunkMap()
+        .forEach((k, v) -> assertEquals(startTimePlusTwoHoursSecs, k.longValue()));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 2 + 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 3 - 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 3));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 3 + 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 4 - 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 4 + 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 6 - 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 6));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 8 - 1));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 8));
+    assertEquals(0, deleteStaleData(startTimeSecs + 3600 * 10 - 1));
+    assertEquals(1, deleteStaleData(startTimeSecs + 3600 * 10));
+    assertTrue(chunkManager.getChunkMap().isEmpty());
   }
 }
