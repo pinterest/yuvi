@@ -138,12 +138,11 @@ public class OffHeapVarBitMetricStore implements MetricStore {
   @Override
   public void close() {
     ChronicleMap timeSeries = (ChronicleMap) this.timeSeries;
-    String info = timeSeries.toString();
-    LOG.info("Closing chronicle map {}", info);
+    LOG.info("Closing chronicle map {}", chunkInfo);
     // Closing the timeSeries frees up all the resources associated with this map if there are no
     // other references to it. So, make sure all the references to the map are closed.
     timeSeries.close();
-    LOG.info("Closed chronicle map {}.", info);
+    LOG.info("Closed chronicle map {}.", chunkInfo);
   }
 
   @Override
