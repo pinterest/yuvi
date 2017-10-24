@@ -1,6 +1,7 @@
 package com.pinterest.yuvi.models;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
 
@@ -8,6 +9,9 @@ import java.util.List;
  * Utility classes to work on a set of points.
  */
 public class Points {
+  private Points() {
+    // private constructor for utility class.
+  }
 
   /**
    * Sort the points by timestamp and remove data points with duplicate
@@ -20,12 +24,11 @@ public class Points {
       return points;
     }
 
-    ArrayList<Point> sortedPoints = new ArrayList<Point>(points);
+    List<Point> sortedPoints = new ArrayList<>(points);
     // Stable sort
-    Collections.sort(sortedPoints, (Point a, Point b) -> (int) (a.getTs() - b.getTs()));
-    int fp;
-    int bp;
-    for (fp = 1, bp = 0; fp < sortedPoints.size(); fp++) {
+    Collections.sort(sortedPoints, Comparator.comparingLong(Point::getTs));
+    int bp = 0;
+    for (int fp = 1; fp < sortedPoints.size(); fp++) {
       if (sortedPoints.get(fp).getTs() == sortedPoints.get(bp).getTs()) {
         sortedPoints.set(bp, sortedPoints.get(fp));
       } else {
