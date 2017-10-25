@@ -50,7 +50,7 @@ public class ChunkManagerTest {
 
     Chunk testChunk1 = chunkManager.getChunk(startTime + 1);
     assertTrue(testChunk1.info().dataSet.startsWith("test"));
-    assertTrue(testChunk1.info().dataSet.contains(new Long(startTime).toString()));
+    assertTrue(testChunk1.info().dataSet.contains(Long.toString(startTime)));
     assertEquals(startTime, testChunk1.info().startTimeSecs);
     assertEquals(startTime + ChunkManager.DEFAULT_CHUNK_DURATION.getSeconds(),
         testChunk1.info().endTimeSecs);
@@ -63,7 +63,7 @@ public class ChunkManagerTest {
     long startTimePlusTwoHours = startTime + 3600 * 2;
     Chunk testChunk2 = chunkManager.getChunk(startTimePlusTwoHours + 1);
     assertTrue(testChunk2.info().dataSet.startsWith("test"));
-    assertTrue(testChunk2.info().dataSet.contains(new Long(startTimePlusTwoHours).toString()));
+    assertTrue(testChunk2.info().dataSet.contains(Long.toString(startTimePlusTwoHours)));
     assertEquals(startTimePlusTwoHours, testChunk2.info().startTimeSecs);
     assertEquals(startTimePlusTwoHours + ChunkManager.DEFAULT_CHUNK_DURATION.getSeconds(),
         testChunk2.info().endTimeSecs);
@@ -126,7 +126,7 @@ public class ChunkManagerTest {
             new Point(startTimePlusTwoHours + 1, testValue)));
 
     assertThat(timeSeries,
-        IsIterableContainingInAnyOrder.containsInAnyOrder(new Object[]{expectedTimeSeries1}));
+        IsIterableContainingInAnyOrder.containsInAnyOrder(expectedTimeSeries1));
 
     // Add a point outside range and run same query.
     chunkManager.addMetric(MetricUtils
@@ -142,7 +142,7 @@ public class ChunkManagerTest {
     assertEquals(2, timeSeries2.get(0).getPoints().size());
 
     assertThat(timeSeries2,
-        IsIterableContainingInAnyOrder.containsInAnyOrder(new Object[]{expectedTimeSeries1}));
+        IsIterableContainingInAnyOrder.containsInAnyOrder(expectedTimeSeries1));
 
     // Add different metrics to same chunk
     String additionalTag = " instance=1";
@@ -166,7 +166,7 @@ public class ChunkManagerTest {
             new Point(startTimePlusTwoHours + 1, testValue * 3)));
 
     assertThat(timeSeries3, IsIterableContainingInAnyOrder.containsInAnyOrder(
-        new Object[]{expectedTimeSeries1, expectedTimeSeries2}));
+        expectedTimeSeries1, expectedTimeSeries2));
 
     // Query the data by a tag
     List<TimeSeries> timeSeries4 = chunkManager.query(
@@ -177,7 +177,7 @@ public class ChunkManagerTest {
     assertEquals(expectedMetricName + additionalTag, timeSeries4.get(0).getMetric());
     assertEquals(2, timeSeries4.get(0).getPoints().size());
     assertThat(timeSeries4, IsIterableContainingInAnyOrder.containsInAnyOrder(
-        new Object[]{expectedTimeSeries2}));
+        expectedTimeSeries2));
 
     // Add a duplicate point and query it. Duplicate points are not allowed.
     chunkManager.addMetric(MetricUtils
@@ -195,7 +195,7 @@ public class ChunkManagerTest {
             new Point(startTimePlusTwoHours + 1, testValue * 3)));
 
     assertThat(timeSeries5, IsIterableContainingInAnyOrder.containsInAnyOrder(
-        new Object[]{expectedTimeSeries3}));
+        expectedTimeSeries3));
 
     // Add a different metric name and query it.
     final String testMetricName1 = "testMetric1";
@@ -228,7 +228,7 @@ public class ChunkManagerTest {
             new Point(startTimePlusTwoHours + 2, testValue * 3)));
 
     assertThat(timeSeries6, IsIterableContainingInAnyOrder.containsInAnyOrder(
-        new Object[]{expectedTimeSeries4, expectedTimeSeries5}));
+        expectedTimeSeries4, expectedTimeSeries5));
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -302,18 +302,15 @@ public class ChunkManagerTest {
 
     assertTrue(chunkManager.getChunkMap().isEmpty());
     // Delete an entry from an empty map.
-    chunkManager.removeStaleChunks(Collections.EMPTY_LIST);
-    chunkManager.removeStaleChunks(Arrays.asList(fakeMapEntry));
+    chunkManager.removeStaleChunks(Collections.emptyList());
+    chunkManager.removeStaleChunks(Collections.singletonList(fakeMapEntry));
     assertTrue(chunkManager.getChunkMap().isEmpty());
 
     chunkManager.addMetric(MetricUtils
         .makeMetricString(testMetricName, inputTagString, startTime + 1, testValue));
 
     assertEquals(1, chunkManager.getChunkMap().size());
-    ArrayList<Map.Entry<Long, Chunk>> chunks = new ArrayList<>();
-    for (Map.Entry entry : chunkManager.getChunkMap().entrySet()) {
-      chunks.add(entry);
-    }
+    ArrayList<Map.Entry<Long, Chunk>> chunks = new ArrayList<>(chunkManager.getChunkMap().entrySet());
     chunkManager.removeStaleChunks(chunks);
     assertTrue(chunkManager.getChunkMap().isEmpty());
 
@@ -323,10 +320,7 @@ public class ChunkManagerTest {
     chunkManager.addMetric(MetricUtils
         .makeMetricString(testMetricName, inputTagString, startTimePlusTwoHours + 1, testValue));
     assertEquals(2, chunkManager.getChunkMap().size());
-    ArrayList<Map.Entry<Long, Chunk>> chunks2 = new ArrayList<>();
-    for (Map.Entry<Long, Chunk> entry : chunkManager.getChunkMap().entrySet()) {
-      chunks2.add(entry);
-    }
+    ArrayList<Map.Entry<Long, Chunk>> chunks2 = new ArrayList<>(chunkManager.getChunkMap().entrySet());
     chunkManager.removeStaleChunks(chunks2);
     assertTrue(chunkManager.getChunkMap().isEmpty());
 
@@ -350,12 +344,12 @@ public class ChunkManagerTest {
         chunkManager.getChunkMap().get(startTimePlusFourHours).info().startTimeSecs);
 
     // Delete a non-existent chunk.
-    chunkManager.removeStaleChunks(Arrays.asList(fakeMapEntry));
+    chunkManager.removeStaleChunks(Collections.singletonList(fakeMapEntry));
     assertEquals(1, chunkManager.getChunkMap().size());
     assertEquals(startTimePlusFourHours,
         chunkManager.getChunkMap().get(startTimePlusFourHours).info().startTimeSecs);
 
-    chunkManager.removeStaleChunks(Collections.EMPTY_LIST);
+    chunkManager.removeStaleChunks(Collections.emptyList());
     assertEquals(1, chunkManager.getChunkMap().size());
     assertEquals(startTimePlusFourHours,
         chunkManager.getChunkMap().get(startTimePlusFourHours).info().startTimeSecs);

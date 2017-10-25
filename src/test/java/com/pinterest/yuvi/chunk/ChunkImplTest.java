@@ -76,9 +76,8 @@ public class ChunkImplTest {
     assertEquals(1, series1.size());
     assertEquals(expectedMetricName1, series1.get(0).getMetric());
     assertEquals(1, series1.get(0).getPoints().size());
-    List<Point> expectedPoints1 = Arrays.asList(new Point(testTs, testValue));
     Assert.assertThat(series1.get(0).getPoints(),
-        IsIterableContainingInOrder.contains(expectedPoints1.toArray()));
+        IsIterableContainingInOrder.contains(new Point(testTs, testValue)));
 
     // 1 metric 2 points
     parseAndAddOpenTSDBMetric(
@@ -94,8 +93,7 @@ public class ChunkImplTest {
     assertEquals(2, series2.get(0).getPoints().size());
     List<Point> expectedPoints2 =
         Arrays.asList(new Point(testTs, testValue), new Point(testTs * 2, testValue * 2));
-    final Object[] timeseries12 = Arrays.asList(
-        new TimeSeries(expectedMetricName1, expectedPoints2)).toArray();
+    final TimeSeries timeseries12 = new TimeSeries(expectedMetricName1, expectedPoints2);
     Assert.assertThat(series2, IsIterableContainingInOrder.contains(timeseries12));
 
     // 2 metrics 2 points
@@ -109,10 +107,9 @@ public class ChunkImplTest {
     assertTrue(chunk.query(Query.parse("test host=h1 dc=dc1")).isEmpty());
 
     final Point point21 = new Point(testTs * 3, testValue * 3);
-    List<Point> expectedPoints3 = Arrays.asList(point21);
     Assert.assertThat(chunk.query(Query.parse(testMetricName2 + queryTagString)),
-        IsIterableContainingInOrder.contains(
-            Arrays.asList(new TimeSeries(expectedMetricName2, expectedPoints3)).toArray()));
+        IsIterableContainingInOrder.contains(new TimeSeries(expectedMetricName2,
+            Collections.singletonList(point21))));
     Assert.assertThat(chunk.query(Query.parse(testMetricName1 + queryTagString)),
         IsIterableContainingInOrder.contains(timeseries12));
 
@@ -121,8 +118,7 @@ public class ChunkImplTest {
         makeMetricString(testMetricName2, inputTagString, testTs * 3, testValue * 3), chunk);
     List<Point> expectedPoints4 = Arrays.asList(point21, point21);
     Assert.assertThat(chunk.query(Query.parse(testMetricName2 + queryTagString)),
-        IsIterableContainingInOrder.contains(
-            Arrays.asList(new TimeSeries(expectedMetricName2, expectedPoints4)).toArray()));
+        IsIterableContainingInOrder.contains(new TimeSeries(expectedMetricName2, expectedPoints4)));
     Assert.assertThat(chunk.query(Query.parse(testMetricName1 + queryTagString)),
         IsIterableContainingInOrder.contains(timeseries12));
 
@@ -133,8 +129,7 @@ public class ChunkImplTest {
         expectedPoints5 =
         Arrays.asList(point21, point21, new Point(testTs * 4, testValue * 4));
     Assert.assertThat(chunk.query(Query.parse(testMetricName2 + queryTagString)),
-        IsIterableContainingInOrder.contains(
-            Arrays.asList(new TimeSeries(expectedMetricName2, expectedPoints5)).toArray()));
+        IsIterableContainingInOrder.contains(new TimeSeries(expectedMetricName2, expectedPoints5)));
     Assert.assertThat(chunk.query(Query.parse(testMetricName1 + queryTagString)),
         IsIterableContainingInOrder.contains(timeseries12));
 
@@ -158,11 +153,9 @@ public class ChunkImplTest {
 
     Point p1 = new Point(testTs, testValue);
 
-    final Object[] expectedTimeSeries = Arrays.asList(
-        new TimeSeries(testMetricName1 + " dc=dc1 host=h1", Arrays.asList(p1)),
-        new TimeSeries(testMetricName1 + " dc=dc1 host=h2", Arrays.asList(p1))
-    ).toArray();
     Assert.assertThat(chunk.query(Query.parse(testMetricName1 + " dc=dc1")),
-        IsIterableContainingInOrder.contains(expectedTimeSeries));
+        IsIterableContainingInOrder.contains(
+            new TimeSeries(testMetricName1 + " dc=dc1 host=h1", Collections.singletonList(p1)),
+            new TimeSeries(testMetricName1 + " dc=dc1 host=h2", Collections.singletonList(p1))));
   }
 }

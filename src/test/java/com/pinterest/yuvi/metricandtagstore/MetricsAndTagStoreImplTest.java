@@ -23,6 +23,7 @@ public class MetricsAndTagStoreImplTest extends TestCase {
   private final long ts = 100L;
   private final double value = 10;
 
+  @Override
   public void setUp() {
     ms = new MetricsAndTagStoreImpl(new InvertedIndexTagStore(), new VarBitMetricStore());
   }
@@ -50,9 +51,8 @@ public class MetricsAndTagStoreImplTest extends TestCase {
     assertEquals(1, series1.size());
     assertEquals(expectedMetricName1, series1.get(0).getMetric());
     assertEquals(1, series1.get(0).getPoints().size());
-    List<Point> expectedPoints1 = Arrays.asList(new Point(ts, value));
     assertThat(series1.get(0).getPoints(),
-        IsIterableContainingInOrder.contains(expectedPoints1.toArray()));
+        IsIterableContainingInOrder.contains(new Point(ts, value)));
 
     // 1 metric 2 points
     ms.addPoint(testMetric1, ts * 2, value * 2);
@@ -69,8 +69,7 @@ public class MetricsAndTagStoreImplTest extends TestCase {
     assertEquals(2, series2.get(0).getPoints().size());
     List<Point> expectedPoints2 =
         Arrays.asList(new Point(ts, value), new Point(ts * 2, value * 2));
-    final Object[] timeseries12 = Arrays.asList(
-        new TimeSeries(expectedMetricName1, expectedPoints2)).toArray();
+    final TimeSeries timeseries12 = new TimeSeries(expectedMetricName1, expectedPoints2);
     assertThat(series2, IsIterableContainingInOrder.contains(timeseries12));
 
     // 2 metrics 2 points
@@ -84,10 +83,9 @@ public class MetricsAndTagStoreImplTest extends TestCase {
     assertTrue(ms.getSeries(Query.parse("test host=h1 dc=dc1")).isEmpty());
 
     final Point point21 = new Point(ts * 3, value * 3);
-    List<Point> expectedPoints3 = Arrays.asList(point21);
     assertThat(ms.getSeries(Query.parse(testMetricName2 + queryTagString)),
-        IsIterableContainingInOrder.contains(
-            Arrays.asList(new TimeSeries(expectedMetricName2, expectedPoints3)).toArray()));
+        IsIterableContainingInOrder.contains(new TimeSeries(expectedMetricName2,
+            Collections.singletonList(point21))));
     assertThat(ms.getSeries(Query.parse(testMetricName1 + queryTagString)),
         IsIterableContainingInOrder.contains(timeseries12));
 
@@ -95,8 +93,7 @@ public class MetricsAndTagStoreImplTest extends TestCase {
     ms.addPoint(testMetric2, ts * 3, value * 3);
     List<Point> expectedPoints4 = Arrays.asList(point21, point21);
     assertThat(ms.getSeries(Query.parse(testMetricName2 + queryTagString)),
-        IsIterableContainingInOrder.contains(
-            Arrays.asList(new TimeSeries(expectedMetricName2, expectedPoints4)).toArray()));
+        IsIterableContainingInOrder.contains(new TimeSeries(expectedMetricName2, expectedPoints4)));
     assertThat(ms.getSeries(Query.parse(testMetricName1 + queryTagString)),
         IsIterableContainingInOrder.contains(timeseries12));
 
@@ -104,8 +101,7 @@ public class MetricsAndTagStoreImplTest extends TestCase {
     ms.addPoint(testMetric2, ts * 4, value * 4);
     List<Point> expectedPoints5 = Arrays.asList(point21, point21, new Point(ts * 4, value * 4));
     assertThat(ms.getSeries(Query.parse(testMetricName2 + queryTagString)),
-        IsIterableContainingInOrder.contains(
-            Arrays.asList(new TimeSeries(expectedMetricName2, expectedPoints5)).toArray()));
+        IsIterableContainingInOrder.contains((new TimeSeries(expectedMetricName2, expectedPoints5))));
     assertThat(ms.getSeries(Query.parse(testMetricName1 + queryTagString)),
         IsIterableContainingInOrder.contains(timeseries12));
 
@@ -128,12 +124,10 @@ public class MetricsAndTagStoreImplTest extends TestCase {
     ms.addPoint(testMetric2, ts, value);
     Point p1 = new Point(ts, value);
 
-    final Object[] expectedTimeSeries = Arrays.asList(
-        new TimeSeries(testMetricName1 + " dc=dc1 host=h1", Arrays.asList(p1)),
-        new TimeSeries(testMetricName1 + " dc=dc1 host=h2", Arrays.asList(p1))
-    ).toArray();
     assertThat(ms.getSeries(Query.parse(testMetricName1 + " dc=dc1")),
-        IsIterableContainingInOrder.contains(expectedTimeSeries));
+        IsIterableContainingInOrder.contains(
+            new TimeSeries(testMetricName1 + " dc=dc1 host=h1", Collections.singletonList(p1)),
+            new TimeSeries(testMetricName1 + " dc=dc1 host=h2", Collections.singletonList(p1))));
   }
 
   // TODO: Query corrupt tag store and metric store.

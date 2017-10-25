@@ -37,9 +37,9 @@ public class InvertedIndexTagStoreTest {
 
   @Test
   public void testDetailedCreate() {
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("k1=v1"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("k1=v1"))));
 
-    assertEquals(ids.get(0), store.get(new Metric(METRIC1, Arrays.asList("k1=v1"))).get());
+    assertEquals(ids.get(0), store.get(new Metric(METRIC1, Collections.singletonList("k1=v1"))).get());
     assertEquals(store.getMetricNameFromId(ids.get(0)), "metric.1 k1=v1");
     assertEquals(4, store.getMetricIndex().size());
     assertEquals(1, store.getMetricIndex().get(METRIC1).getCardinality());
@@ -47,8 +47,8 @@ public class InvertedIndexTagStoreTest {
     assertEquals(1, store.getMetricIndex().get("k1=v1").getCardinality());
     assertEquals(1, store.getMetricIndex().get("metric.1 k1=v1").getCardinality());
 
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("k1=v2"))));
-    assertEquals(ids.get(1), store.get(new Metric(METRIC1, Arrays.asList("k1=v2"))).get());
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("k1=v2"))));
+    assertEquals(ids.get(1), store.get(new Metric(METRIC1, Collections.singletonList("k1=v2"))).get());
     assertEquals(store.getMetricNameFromId(ids.get(1)), "metric.1 k1=v2");
     assertEquals(6, store.getMetricIndex().size());
     assertEquals(2, store.getMetricIndex().get(METRIC1).getCardinality());
@@ -58,8 +58,8 @@ public class InvertedIndexTagStoreTest {
     assertEquals(1, store.getMetricIndex().get("metric.1 k1=v1").getCardinality());
     assertEquals(1, store.getMetricIndex().get("metric.1 k1=v2").getCardinality());
 
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("k2=v1"))));
-    assertEquals(ids.get(2), store.get(new Metric(METRIC1, Arrays.asList("k2=v1"))).get());
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("k2=v1"))));
+    assertEquals(ids.get(2), store.get(new Metric(METRIC1, Collections.singletonList("k2=v1"))).get());
     assertEquals(store.getMetricNameFromId(ids.get(2)), "metric.1 k2=v1");
     assertEquals(9, store.getMetricIndex().size());
     assertEquals(3, store.getMetricIndex().get(METRIC1).getCardinality());
@@ -91,10 +91,10 @@ public class InvertedIndexTagStoreTest {
 
   @Test
   public void testGet() {
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("k1=v1"))));
-    ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v1"))));
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("k1=v2"))));
-    ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v2"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("k1=v1"))));
+    ids.add(store.getOrCreate(new Metric(METRIC2, Collections.singletonList("k1=v1"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("k1=v2"))));
+    ids.add(store.getOrCreate(new Metric(METRIC2, Collections.singletonList("k1=v2"))));
     ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v1", "k2=v1"))));
     ids.add(store.getOrCreate(new Metric(METRIC3, emptyList())));
 
@@ -102,10 +102,10 @@ public class InvertedIndexTagStoreTest {
     Set<Integer> deduped = new HashSet<>(ids);
     assertEquals(deduped.size(), ids.size());
 
-    assertEquals(ids.get(0), store.get(new Metric(METRIC1, Arrays.asList("k1=v1"))).get());
-    assertEquals(ids.get(1), store.get(new Metric(METRIC2, Arrays.asList("k1=v1"))).get());
-    assertEquals(ids.get(2), store.get(new Metric(METRIC1, Arrays.asList("k1=v2"))).get());
-    assertEquals(ids.get(3), store.get(new Metric(METRIC2, Arrays.asList("k1=v2"))).get());
+    assertEquals(ids.get(0), store.get(new Metric(METRIC1, Collections.singletonList("k1=v1"))).get());
+    assertEquals(ids.get(1), store.get(new Metric(METRIC2, Collections.singletonList("k1=v1"))).get());
+    assertEquals(ids.get(2), store.get(new Metric(METRIC1, Collections.singletonList("k1=v2"))).get());
+    assertEquals(ids.get(3), store.get(new Metric(METRIC2, Collections.singletonList("k1=v2"))).get());
     assertEquals(ids.get(4),
         store.get(new Metric(METRIC2, Arrays.asList("k1=v1", "k2=v1"))).get());
     assertEquals(ids.get(4),
@@ -117,10 +117,10 @@ public class InvertedIndexTagStoreTest {
   @Test
   public void testDuplicateCreate() {
     List<Integer> ids = new ArrayList<>();
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("k1=v1"))));
-    ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v1"))));
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("k1=v2"))));
-    ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v2"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("k1=v1"))));
+    ids.add(store.getOrCreate(new Metric(METRIC2, Collections.singletonList("k1=v1"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("k1=v2"))));
+    ids.add(store.getOrCreate(new Metric(METRIC2, Collections.singletonList("k1=v2"))));
     ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v1", "k2=v1"))));
     ids.add(store.getOrCreate(new Metric(METRIC3, emptyList())));
 
@@ -129,13 +129,13 @@ public class InvertedIndexTagStoreTest {
     assertEquals(deduped.size(), ids.size());
 
     assertEquals(ids.get(0).intValue(),
-        store.getOrCreate(new Metric(METRIC1, Arrays.asList("k1=v1"))));
+        store.getOrCreate(new Metric(METRIC1, Collections.singletonList("k1=v1"))));
     assertEquals(ids.get(1).intValue(),
-        store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v1"))));
+        store.getOrCreate(new Metric(METRIC2, Collections.singletonList("k1=v1"))));
     assertEquals(ids.get(2).intValue(),
-        store.getOrCreate(new Metric(METRIC1, Arrays.asList("k1=v2"))));
+        store.getOrCreate(new Metric(METRIC1, Collections.singletonList("k1=v2"))));
     assertEquals(ids.get(3).intValue(),
-        store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v2"))));
+        store.getOrCreate(new Metric(METRIC2, Collections.singletonList("k1=v2"))));
     assertEquals(ids.get(4).intValue(),
         store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v1", "k2=v1"))));
     assertEquals(ids.get(4).intValue(),
@@ -159,8 +159,8 @@ public class InvertedIndexTagStoreTest {
     assertEquals(Arrays.asList(ids.get(0), ids.get(2)), store.lookup(Query.parse("metric.1 k1=*")));
     assertEquals(Arrays.asList(ids.get(1), ids.get(3), ids.get(4)),
         store.lookup(Query.parse("metric.2 k1=*")));
-    assertEquals(Arrays.asList(ids.get(4)), store.lookup(Query.parse("metric.2 k2=*")));
-    assertEquals(Arrays.asList(ids.get(4)), store.lookup(Query.parse("metric.2 k1=v1 k2=*")));
+    assertEquals(Collections.singletonList(ids.get(4)), store.lookup(Query.parse("metric.2 k2=*")));
+    assertEquals(Collections.singletonList(ids.get(4)), store.lookup(Query.parse("metric.2 k1=v1 k2=*")));
     assertTrue(store.lookup(Query.parse("metric.1 k2=*")).isEmpty());
     assertTrue(store.lookup(Query.parse("metric.1 k2=*")).isEmpty());
     assertTrue(store.lookup(Query.parse("metric.2 k3=*")).isEmpty());
@@ -176,30 +176,30 @@ public class InvertedIndexTagStoreTest {
     Set<Integer> deduped = new HashSet<>(ids);
     assertEquals(deduped.size(), ids.size());
 
-    assertEquals(Arrays.asList(ids.get(0)), query("metric.1 k1=v1"));
-    assertEquals(Arrays.asList(ids.get(0)), query("metric.1 k1=v1 k2=v2"));
-    assertEquals(Arrays.asList(ids.get(1)), query("metric.1 k1=v2"));
-    assertEquals(Arrays.asList(ids.get(1)), query("metric.1 k1=v2 k2=v1"));
+    assertEquals(Collections.singletonList(ids.get(0)), query("metric.1 k1=v1"));
+    assertEquals(Collections.singletonList(ids.get(0)), query("metric.1 k1=v1 k2=v2"));
+    assertEquals(Collections.singletonList(ids.get(1)), query("metric.1 k1=v2"));
+    assertEquals(Collections.singletonList(ids.get(1)), query("metric.1 k1=v2 k2=v1"));
   }
 
   @Test
   public void testExactQuery() {
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("k1=v1"))));
-    ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v1"))));
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("k1=v2"))));
-    ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v2"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("k1=v1"))));
+    ids.add(store.getOrCreate(new Metric(METRIC2, Collections.singletonList("k1=v1"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("k1=v2"))));
+    ids.add(store.getOrCreate(new Metric(METRIC2, Collections.singletonList("k1=v2"))));
     ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v1", "k2=v1"))));
 
     assertEquals(5, ids.size());
     Set<Integer> deduped = new HashSet<>(ids);
     assertEquals(deduped.size(), ids.size());
 
-    assertEquals(Arrays.asList(ids.get(0)), query("metric.1 k1=v1"));
+    assertEquals(Collections.singletonList(ids.get(0)), query("metric.1 k1=v1"));
     assertEquals(Arrays.asList(ids.get(1), ids.get(4)), query("metric.2 k1=v1"));
-    assertEquals(Arrays.asList(ids.get(2)), query("metric.1 k1=v2"));
-    assertEquals(Arrays.asList(ids.get(3)), query("metric.2 k1=v2"));
-    assertEquals(Arrays.asList(ids.get(4)), query("metric.2 k1=v1 k2=v1"));
-    assertEquals(Arrays.asList(ids.get(4)), query("metric.2 k2=v1 k1=v1"));
+    assertEquals(Collections.singletonList(ids.get(2)), query("metric.1 k1=v2"));
+    assertEquals(Collections.singletonList(ids.get(3)), query("metric.2 k1=v2"));
+    assertEquals(Collections.singletonList(ids.get(4)), query("metric.2 k1=v1 k2=v1"));
+    assertEquals(Collections.singletonList(ids.get(4)), query("metric.2 k2=v1 k1=v1"));
     assertEquals(Arrays.asList(ids.get(1), ids.get(4)), query("metric.2 k1=v1"));
     assertEquals(Arrays.asList(ids.get(0), ids.get(2)), query(METRIC1));
     assertEquals(Arrays.asList(ids.get(1), ids.get(3), ids.get(4)), query(METRIC2));
@@ -251,48 +251,48 @@ public class InvertedIndexTagStoreTest {
         makeRegExQuery(METRIC1, HOST_TAG, "ogg-\\d(3).ops.ankh.morpork.com")).isEmpty());
 
     ids.add(store.getOrCreate(
-        new Metric(METRIC1, Arrays.asList("host=ogg-01.ops.ankh.morpork.com"))));
+        new Metric(METRIC1, Collections.singletonList("host=ogg-01.ops.ankh.morpork.com"))));
 
     assertEquals(1, ids.size());
     assertEquals(((Set<Integer>) new HashSet<>(ids)).size(), ids.size());
 
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(Collections.singletonList(ids.get(0)), query(
         makeRegExQuery(METRIC1, HOST_TAG, "ogg-01.ops.ankh.morpork.com")));  // exact match
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(Collections.singletonList(ids.get(0)), query(
         makeRegExQuery(METRIC1, HOST_TAG, ".*.ops.ankh.morpork.com")));  // match postfix
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(Collections.singletonList(ids.get(0)), query(
         makeRegExQuery(METRIC1, HOST_TAG, "ogg-01.ops.ankh.*")));  // exact prefix
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(Collections.singletonList(ids.get(0)), query(
         makeRegExQuery(METRIC1, HOST_TAG, ".*")));  // match anything
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(Collections.singletonList(ids.get(0)), query(
         makeRegExQuery(METRIC1, HOST_TAG,
             "ogg-01.ops.(ankh|quirm|tsort).morpork.com"))); // match grouping
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(Collections.singletonList(ids.get(0)), query(
         makeRegExQuery(METRIC1, HOST_TAG, "ogg-\\d+.ops.ankh.morpork.com"))); // match numbers
 
     assertTrue(query(
         makeRegExQuery(METRIC1, HOST_TAG, "ogg-\\d(3).ops.ankh.morpork.com")).isEmpty());
 
     ids.add(store.getOrCreate(
-        new Metric(METRIC1, Arrays.asList("host=ogg-01.ops.ankh1.morpork.com"))));
+        new Metric(METRIC1, Collections.singletonList("host=ogg-01.ops.ankh1.morpork.com"))));
     assertEquals(2, ids.size());
 
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(Collections.singletonList(ids.get(0)), query(
         makeRegExQuery(METRIC1, HOST_TAG, "ogg-01.ops.ankh.morpork.com")));
-    assertEquals(Arrays.asList(ids.get(1)), query(
+    assertEquals(Collections.singletonList(ids.get(1)), query(
         makeRegExQuery(METRIC1, HOST_TAG, "ogg-01.ops.ankh1.morpork.com")));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(Collections.singletonList(ids.get(0)), query(
         makeRegExQuery(METRIC1, HOST_TAG, "ogg-01.ops.(ankh|quirm|tsort).morpork.com")));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(Collections.singletonList(ids.get(0)), query(
         makeRegExQuery(METRIC1, HOST_TAG, ".*.ops.ankh.morpork.com")));
     assertEquals(Arrays.asList(ids.get(0), ids.get(1)), query(
         makeRegExQuery(METRIC1, HOST_TAG, "ogg-01.ops.ankh.*")));
     assertEquals(Arrays.asList(ids.get(0), ids.get(1)), query(
         makeRegExQuery(METRIC1, HOST_TAG, ".*")));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(Collections.singletonList(ids.get(0)), query(
         makeRegExQuery(METRIC1, HOST_TAG,
             "ogg-01.ops.(ankh|quirm|tsort).morpork.com"))); // match grouping
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(Collections.singletonList(ids.get(0)), query(
         makeRegExQuery(METRIC1, HOST_TAG, "ogg-\\d+.ops.ankh.morpork.com"))); // match numbers
 
     assertTrue(query(
@@ -304,14 +304,14 @@ public class InvertedIndexTagStoreTest {
   @Test(expected = PatternSyntaxException.class)
   public void testFailedRegExQuery() {
     ids.add(store.getOrCreate(
-        new Metric(METRIC1, Arrays.asList("host=ogg-01.ops.ankh.morpork.com"))));
+        new Metric(METRIC1, Collections.singletonList("host=ogg-01.ops.ankh.morpork.com"))));
 
     query(makeRegExQuery(METRIC1, HOST_TAG, "ogg-\\d(3.ops.ankh.morpork.com"));
   }
 
   private Query makeRegExQuery(String metricName, String tagKey, String regEx) {
     final List<TagMatcher> tagMatchers =
-        Arrays.asList(TagMatcher.regExMatch(tagKey, regEx));
+            Collections.singletonList(TagMatcher.regExMatch(tagKey, regEx));
     return new Query(metricName, tagMatchers);
   }
 
@@ -323,8 +323,8 @@ public class InvertedIndexTagStoreTest {
     assertTrue(query(makeLiteralOrQuery(METRIC1, HOST_TAG, "|", false, true)).isEmpty());
     assertTrue(query(makeLiteralOrQuery(METRIC1, HOST_TAG, "|", true, true)).isEmpty());
 
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("host=CMTDibbler"))));
-    ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("host=CMTDibbler"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("host=CMTDibbler"))));
+    ids.add(store.getOrCreate(new Metric(METRIC2, Collections.singletonList("host=CMTDibbler"))));
 
     assertEquals(2, ids.size());
     Set<Integer> deduped = new HashSet<>(ids);
@@ -334,63 +334,54 @@ public class InvertedIndexTagStoreTest {
     assertTrue(query(makeLiteralOrQuery(METRIC1, HOST_TAG, "|", false, false)).isEmpty());
     assertTrue(query(makeLiteralOrQuery(METRIC1, HOST_TAG, "|", true, false)).isEmpty());
 
+    List<Integer> id0 = Collections.singletonList(ids.get(0));
     // Test empty not queries: are equivalent to wildcard queries since they exclude nothing.
-    assertEquals(Arrays.asList(ids.get(0)), query(
-        makeLiteralOrQuery(METRIC1, HOST_TAG, "|", false, true)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
-        makeLiteralOrQuery(METRIC1, HOST_TAG, "|", true, true)));
+    assertEquals(id0, query(makeLiteralOrQuery(METRIC1, HOST_TAG, "|", false, true)));
+    assertEquals(id0, query(makeLiteralOrQuery(METRIC1, HOST_TAG, "|", true, true)));
 
     // case insensitive literal or
-    assertEquals(Arrays.asList(ids.get(0)), query(
-        makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler", true, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
-        makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler|", true, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
-        makeLiteralOrQuery(METRIC1, HOST_TAG, "|cmtdibbler|", true, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
-        makeLiteralOrQuery(METRIC1, HOST_TAG, "|cmtdibbler", true, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
-        makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|cmtdibbler|Slant", true, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
-        makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler|LutZe|Slant", true, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
-        makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|cmtdibbler", true, false)));
-    assertTrue(query(makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|Leki",
-        true, false)).isEmpty());
+    assertEquals(id0, query(makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler", true, false)));
+    assertEquals(id0, query(makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler|", true, false)));
+    assertEquals(id0, query(makeLiteralOrQuery(METRIC1, HOST_TAG, "|cmtdibbler|", true, false)));
+    assertEquals(id0, query(makeLiteralOrQuery(METRIC1, HOST_TAG, "|cmtdibbler", true, false)));
+    assertEquals(id0, query(makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|cmtdibbler|Slant", true, false)));
+    assertEquals(id0, query(makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler|LutZe|Slant", true, false)));
+    assertEquals(id0, query(makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|cmtdibbler", true, false)));
+    assertTrue(query(makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|Leki", true, false)).isEmpty());
 
     // Test case sensitive not literal or expressions
     // case sensitive literal or
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "CMTDibbler", false, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "CMTDibbler|", false, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "|CMTDibbler|", false, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "|CMTDibbler", false, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|CMTDibbler|Slant", false, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "CMTDibbler|LutZe|Slant", false, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|CMTDibbler", false, false)));
     assertTrue(query(makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|Leki",
         false, false)).isEmpty());
 
     // case insensitive literal or
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler", true, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler|", true, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "|cmtdibbler|", true, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "|cmtdibbler", true, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|cmtdibbler|Slant", true, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler|LutZe|Slant", true, false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|cmtdibbler", true, false)));
     assertTrue(query(makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|Leki",
         true, false)).isEmpty());
@@ -408,7 +399,7 @@ public class InvertedIndexTagStoreTest {
         false, true)).isEmpty());
     assertTrue(query(makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|CMTDibbler",
         false, true)).isEmpty());
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|Leki", false, true)));
 
     // Test case insensitive not literal or expressions
@@ -430,37 +421,38 @@ public class InvertedIndexTagStoreTest {
     assertEquals(3, ids.size());
 
     // Test case sensitive not literal or expressions
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    List<Integer> id2 = Collections.singletonList(ids.get(2));
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "CMTDibbler", false, true)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "CMTDibbler|", false, true)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "|CMTDibbler|", false, true)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "|CMTDibbler", false, true)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|CMTDibbler|Slant", false, true)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "CMTDibbler|LutZe|Slant", false, true)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|CMTDibbler", false, true)));
     assertEquals(Arrays.asList(ids.get(0), ids.get(2)), query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|Leki", false, true)));
 
     // case insensitive not literal or
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler", true, true)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler|", true, true)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "|cmtdibbler|", true, true)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "|cmtdibbler", true, true)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|cmtdibbler|Slant", true, true)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler|LutZe|Slant", true, true)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(id2, query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|cmtdibbler", true, true)));
     assertEquals(Arrays.asList(ids.get(0), ids.get(2)), query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "LutZe|Slant|leki", true, true)));
@@ -476,25 +468,25 @@ public class InvertedIndexTagStoreTest {
         true, true)).isEmpty());
 
     // Test multiple or match expresssions with multiple matches.
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("host=Ceki"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("host=Ceki"))));
     assertEquals(4, ids.size());
 
     assertEquals(Arrays.asList(ids.get(0), ids.get(2)), query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "CMTDibbler|LutZe|Bubbler", false, false)));
     assertEquals(Arrays.asList(ids.get(0), ids.get(2)), query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler|LutZe|bubbler", true, false)));
-    assertEquals(Arrays.asList(ids.get(3)), query(
+    assertEquals(Collections.singletonList(ids.get(3)), query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "CMTDibbler|LutZe|Bubbler", false, true)));
-    assertEquals(Arrays.asList(ids.get(3)), query(
+    assertEquals(Collections.singletonList(ids.get(3)), query(
         makeLiteralOrQuery(METRIC1, HOST_TAG, "cmtdibbler|LutZe|bubbler", true, true)));
   }
 
   private Query makeLiteralOrQuery(String metricName, String tagKey, String queryString,
                                    boolean caseInsensitive, boolean excludeLiteral) {
 
-    final List<TagMatcher> tagMatchers = Arrays.asList(
+    final List<TagMatcher> tagMatchers = Collections.singletonList(
         excludeLiteral ? TagMatcher.notLiteralOrMatch(tagKey, queryString, caseInsensitive)
-                       : TagMatcher.literalOrMatch(tagKey, queryString, caseInsensitive));
+            : TagMatcher.literalOrMatch(tagKey, queryString, caseInsensitive));
     return new Query(metricName, tagMatchers);
   }
 
@@ -502,27 +494,27 @@ public class InvertedIndexTagStoreTest {
   public void testWilcardExpressions() {
 
     ids.add(store.getOrCreate(new Metric(METRIC1,
-        Arrays.asList("host=ogg-01.ops.ankh.morpork.com"))));
+        Collections.singletonList("host=ogg-01.ops.ankh.morpork.com"))));
     ids.add(store.getOrCreate(new Metric(METRIC1,
-        Arrays.asList("fakehost=ogg-01.ops.ankh.morpork.com"))));
+        Collections.singletonList("fakehost=ogg-01.ops.ankh.morpork.com"))));
     ids.add(store.getOrCreate(new Metric(METRIC2,
-        Arrays.asList("host=ogg-01.ops.ankh.morpork.com"))));
+        Collections.singletonList("host=ogg-01.ops.ankh.morpork.com"))));
 
     assertEquals(3, ids.size());
     assertEquals(((Set<Integer>) new HashSet<>(ids)).size(), ids.size());
 
     // Test basic wildcard and iwildcard queries
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(Collections.singletonList(ids.get(0)), query(
         makeWildcardQuery(METRIC1, HOST_TAG, "*", false)));
-    assertEquals(Arrays.asList(ids.get(1)), query(
+    assertEquals(Collections.singletonList(ids.get(1)), query(
         makeWildcardQuery(METRIC1, "fakehost", "*", false)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(Collections.singletonList(ids.get(2)), query(
         makeWildcardQuery(METRIC2, HOST_TAG, "*", false)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(Collections.singletonList(ids.get(0)), query(
         makeWildcardQuery(METRIC1, HOST_TAG, "*", true)));
-    assertEquals(Arrays.asList(ids.get(1)), query(
+    assertEquals(Collections.singletonList(ids.get(1)), query(
         makeWildcardQuery(METRIC1, "fakehost", "*", true)));
-    assertEquals(Arrays.asList(ids.get(2)), query(
+    assertEquals(Collections.singletonList(ids.get(2)), query(
         makeWildcardQuery(METRIC2, HOST_TAG, "*", true)));
     assertTrue(query(
         makeWildcardQuery(METRIC1, "h", "*", true)).isEmpty());
@@ -546,11 +538,12 @@ public class InvertedIndexTagStoreTest {
         makeWildcardQuery(METRIC1, HOST_TAG, "*QUIRM*", true)).isEmpty());
 
     // match simple
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    List<Integer> id0 = Collections.singletonList(ids.get(0));
+    assertEquals(id0, query(
         makeWildcardQuery(METRIC1, HOST_TAG, "*.morpork.com", false)));  // prefix
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeWildcardQuery(METRIC1, HOST_TAG, "ogg*", false))); // postfix
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeWildcardQuery(METRIC1, HOST_TAG, "ogg*com", false))); // infix
     assertTrue(query(
         makeWildcardQuery(METRIC1, HOST_TAG, "*.MORPORK.com", false)).isEmpty());
@@ -559,11 +552,11 @@ public class InvertedIndexTagStoreTest {
     assertTrue(query(
         makeWildcardQuery(METRIC1, HOST_TAG, "OGG*com", false)).isEmpty());
 
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeWildcardQuery(METRIC1, HOST_TAG, "*.MORPORK.com", true)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeWildcardQuery(METRIC1, HOST_TAG, "OGG*", true)));
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id0, query(
         makeWildcardQuery(METRIC1, HOST_TAG, "OGG*com", true)));
     assertTrue(query(
         makeWildcardQuery(METRIC1, HOST_TAG, "*.MORPORK1.com", true)).isEmpty());
@@ -578,20 +571,23 @@ public class InvertedIndexTagStoreTest {
 
     // Query multiple metrics
     ids.add(store.getOrCreate(new Metric(METRIC1,
-        Arrays.asList("host=ogg-02.ops.ankh.morpork.com"))));
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("host=ogg*mor"))));
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("host=ogg*ops*"))));
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("host=ogg*ops*mor"))));
+        Collections.singletonList("host=ogg-02.ops.ankh.morpork.com"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1,
+        Collections.singletonList("host=ogg*mor"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1,
+        Collections.singletonList("host=ogg*ops*"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1,
+        Collections.singletonList("host=ogg*ops*mor"))));
     assertEquals(7, ids.size());
     assertEquals(((Set<Integer>) new HashSet<>(ids)).size(), ids.size());
 
-    assertEquals(Arrays.asList(ids.get(6)), query(
+    assertEquals(Collections.singletonList(ids.get(6)), query(
         makeWildcardQuery(METRIC1, HOST_TAG, "*ops*mor", false)));
     assertEquals(Arrays.asList(ids.get(0), ids.get(3), ids.get(5), ids.get(6)), query(
         makeWildcardQuery(METRIC1, HOST_TAG, "ogg*ops*", false)));
     assertEquals(Arrays.asList(ids.get(0), ids.get(3), ids.get(6)), query(
         makeWildcardQuery(METRIC1, HOST_TAG, "ogg*ops*mor", false)));
-    assertEquals(Arrays.asList(ids.get(6)), query(
+    assertEquals(Collections.singletonList(ids.get(6)), query(
         makeWildcardQuery(METRIC1, HOST_TAG, "*OPS*mor", true)));
     assertEquals(Arrays.asList(ids.get(0), ids.get(3), ids.get(5), ids.get(6)), query(
         makeWildcardQuery(METRIC1, HOST_TAG, "ogg*OPS*", true)));
@@ -602,19 +598,20 @@ public class InvertedIndexTagStoreTest {
             makeWildcardQuery(METRIC1, HOST_TAG, "******", true)));
 
     // test wildcard with UTF8 strings. Make sure the file is UTF8 encoded for these tests to pass.
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("host=Здравей'_хора"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("host=Здравей'_хора"))));
     assertEquals(8, ids.size());
-    assertEquals(Arrays.asList(ids.get(7)), query(
+    List<Integer> id7 = Collections.singletonList(ids.get(7));
+    assertEquals(id7, query(
         makeWildcardQuery(METRIC1, HOST_TAG, "Здр*", false)));
-    assertEquals(Arrays.asList(ids.get(7)), query(
+    assertEquals(id7, query(
         makeWildcardQuery(METRIC1, HOST_TAG, "Здр*", true)));
-    assertEquals(Arrays.asList(ids.get(7)), query(
+    assertEquals(id7, query(
         makeWildcardQuery(METRIC1, HOST_TAG, "*хора", false)));
-    assertEquals(Arrays.asList(ids.get(7)), query(
+    assertEquals(id7, query(
         makeWildcardQuery(METRIC1, HOST_TAG, "*хора", true)));
-    assertEquals(Arrays.asList(ids.get(7)), query(
+    assertEquals(id7, query(
         makeWildcardQuery(METRIC1, HOST_TAG, "Здр*ра", false)));
-    assertEquals(Arrays.asList(ids.get(7)), query(
+    assertEquals(id7, query(
         makeWildcardQuery(METRIC1, HOST_TAG, "Здр*ра", true)));
   }
 
@@ -622,53 +619,50 @@ public class InvertedIndexTagStoreTest {
                                            String tagKey, List<Integer> ids,
                                            boolean caseInsensitive) {
 
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    List<Integer> id = Collections.singletonList(ids.get(0));
+    assertEquals(id, query(
         makeWildcardQuery(metric1, tagKey, "ogg*ops*com", caseInsensitive)));  // double infix
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id, query(
         makeWildcardQuery(metric1, tagKey, "ogg*ops*ank*com", caseInsensitive)));  // triple infix
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id, query(
         makeWildcardQuery(metric1, tagKey, "*morpork*", caseInsensitive)));  // prefix and postfix
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id, query(
         makeWildcardQuery(metric1, tagKey, "*ops*com", caseInsensitive)));  // infix and postfix
-    assertEquals(Arrays.asList(ids.get(0)), query(
-        makeWildcardQuery(metric1, tagKey, "*ops*mor*com",
-            caseInsensitive)));  // double infix and postfix
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id, query(makeWildcardQuery(metric1, tagKey, "*ops*mor*com",
+        caseInsensitive)));  // double infix and postfix
+    assertEquals(id, query(
         makeWildcardQuery(metric1, tagKey, "ogg*ops*", caseInsensitive)));  // pre and infix
-    assertEquals(Arrays.asList(ids.get(0)), query(
-        makeWildcardQuery(metric1, tagKey, "ogg*ops*mor*",
-            caseInsensitive)));  // pre and double infix
-    assertEquals(Arrays.asList(ids.get(0)), query(
-        makeWildcardQuery(metric1, tagKey, "ogg***com",
-            caseInsensitive)));  // pre and multi wildcard infix
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id, query(makeWildcardQuery(metric1, tagKey, "ogg*ops*mor*",
+        caseInsensitive)));  // pre and double infix
+    assertEquals(id, query(makeWildcardQuery(metric1, tagKey, "ogg***com",
+        caseInsensitive)));  // pre and multi wildcard infix
+    assertEquals(id, query(
         makeWildcardQuery(metric1, tagKey, "ogg*****", caseInsensitive)));  // multi wildcard prefix
-    assertEquals(Arrays.asList(ids.get(0)), query(
+    assertEquals(id, query(
         makeWildcardQuery(metric1, tagKey, "****com", caseInsensitive)));  // multi wildcard postfix
-    assertEquals(Arrays.asList(ids.get(0)), query(
-        makeWildcardQuery(metric1, tagKey, "****ogg*****mor****com****",
-            caseInsensitive)));  // multi wildcards
+    assertEquals(id, query(makeWildcardQuery(metric1, tagKey, "****ogg*****mor****com****",
+        caseInsensitive)));  // multi wildcards
   }
 
   private Query makeWildcardQuery(String metricName, String tagKey, String queryString,
                                   boolean caseInsensitive) {
 
-    final List<TagMatcher> tagMatchers = Arrays.asList(
+    final List<TagMatcher> tagMatchers = Collections.singletonList(
         caseInsensitive ? TagMatcher.iwildcardMatch(tagKey, queryString)
-                        : TagMatcher.wildcardMatch(tagKey, queryString));
+            : TagMatcher.wildcardMatch(tagKey, queryString));
     return new Query(metricName, tagMatchers);
   }
 
   @Test
   public void testExtractTagValue() {
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("k1=v1"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("k1=v1"))));
 
     assertThat(ImmutableMap.of(2, "v1"), is(store.getValuesForMetricKey(METRIC1, "k1")));
     assertTrue((store.getValuesForMetricKey(METRIC1, "k2").isEmpty()));
 
-    ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v1"))));
-    ids.add(store.getOrCreate(new Metric(METRIC1, Arrays.asList("k1=v2"))));
-    ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v2"))));
+    ids.add(store.getOrCreate(new Metric(METRIC2, Collections.singletonList("k1=v1"))));
+    ids.add(store.getOrCreate(new Metric(METRIC1, Collections.singletonList("k1=v2"))));
+    ids.add(store.getOrCreate(new Metric(METRIC2, Collections.singletonList("k1=v2"))));
     ids.add(store.getOrCreate(new Metric(METRIC2, Arrays.asList("k1=v1", "k2=v1"))));
 
     assertEquals(5, ids.size());
@@ -738,19 +732,16 @@ public class InvertedIndexTagStoreTest {
     TagMatcher regExpMatcher = new TagMatcher(MatchType.REGEXP, new Tag("k1", "(v|V).*"));
     TagMatcher regExpMatcher2 = new TagMatcher(MatchType.REGEXP, new Tag("k2", "(v|V).*"));
 
+    List<Integer> id0 = Collections.singletonList(ids.get(0));
+    List<Integer> id1 = Collections.singletonList(ids.get(1));
     assertEquals(Arrays.asList(ids.get(0), ids.get(1)),
-        query(new Query(METRIC1, Arrays.asList(exactTagMatcher))));
-    assertEquals(Arrays.asList(ids.get(1)),
-        query(new Query(METRIC1, Arrays.asList(exactTagMatcher, exactTagMatcher2))));
-    assertEquals(Arrays.asList(ids.get(1)),
-        query(new Query(METRIC1, Arrays.asList(exactTagMatcher, orMatcher2))));
-    assertEquals(Arrays.asList(ids.get(1)),
-        query(new Query(METRIC1, Arrays.asList(exactTagMatcher, iOrMatcher2))));
+        query(new Query(METRIC1, Collections.singletonList(exactTagMatcher))));
+    assertEquals(id1, query(new Query(METRIC1, Arrays.asList(exactTagMatcher, exactTagMatcher2))));
+    assertEquals(id1, query(new Query(METRIC1, Arrays.asList(exactTagMatcher, orMatcher2))));
+    assertEquals(id1, query(new Query(METRIC1, Arrays.asList(exactTagMatcher, iOrMatcher2))));
 
-    assertEquals(Arrays.asList(ids.get(0)),
-        query(new Query(METRIC1, Arrays.asList(exactTagMatcher, notOrMatcher))));
-    assertEquals(Arrays.asList(ids.get(0)),
-        query(new Query(METRIC1, Arrays.asList(exactTagMatcher, notIOrMatcher))));
+    assertEquals(id0, query(new Query(METRIC1, Arrays.asList(exactTagMatcher, notOrMatcher))));
+    assertEquals(id0, query(new Query(METRIC1, Arrays.asList(exactTagMatcher, notIOrMatcher))));
 
     assertEquals(Arrays.asList(ids.get(0), ids.get(2)),
         query(new Query(METRIC1, Arrays.asList(orMatcher, notIOrMatcher))));
@@ -761,26 +752,19 @@ public class InvertedIndexTagStoreTest {
     assertEquals(Arrays.asList(ids.get(0), ids.get(2)),
         query(new Query(METRIC1, Arrays.asList(iOrMatcher, notOrMatcher))));
 
-    assertEquals(Arrays.asList(ids.get(1)),
-        query(new Query(METRIC1, Arrays.asList(wildcardMatcher2, exactTagMatcher))));
-    assertEquals(Arrays.asList(ids.get(1)),
-        query(new Query(METRIC1, Arrays.asList(iWildcardMatcher2, exactTagMatcher))));
-    assertEquals(Arrays.asList(ids.get(1)),
-        query(new Query(METRIC1, Arrays.asList(iWildcardMatcher, orMatcher2))));
-    assertEquals(Arrays.asList(ids.get(1)),
-        query(new Query(METRIC1, Arrays.asList(iWildcardMatcher, iOrMatcher2))));
+    assertEquals(id1, query(new Query(METRIC1, Arrays.asList(wildcardMatcher2, exactTagMatcher))));
+    assertEquals(id1, query(new Query(METRIC1, Arrays.asList(iWildcardMatcher2, exactTagMatcher))));
+    assertEquals(id1, query(new Query(METRIC1, Arrays.asList(iWildcardMatcher, orMatcher2))));
+    assertEquals(id1, query(new Query(METRIC1, Arrays.asList(iWildcardMatcher, iOrMatcher2))));
     assertEquals(Arrays.asList(ids.get(0), ids.get(2)),
         query(new Query(METRIC1, Arrays.asList(iWildcardMatcher, notOrMatcher))));
     assertEquals(Arrays.asList(ids.get(0), ids.get(2)),
         query(new Query(METRIC1, Arrays.asList(iWildcardMatcher, notIOrMatcher))));
 
-    assertEquals(Arrays.asList(ids.get(1)),
-        query(new Query(METRIC1, Arrays.asList(regExpMatcher2, exactTagMatcher))));
-    assertEquals(Arrays.asList(ids.get(1)),
-        query(new Query(METRIC1, Arrays.asList(regExpMatcher2, exactTagMatcher))));
-    assertEquals(Arrays.asList(ids.get(1)),
-        query(new Query(METRIC1, Arrays.asList(regExpMatcher2, orMatcher))));
-    assertEquals(Arrays.asList(ids.get(1)),
+    assertEquals(id1, query(new Query(METRIC1, Arrays.asList(regExpMatcher2, exactTagMatcher))));
+    assertEquals(id1, query(new Query(METRIC1, Arrays.asList(regExpMatcher2, exactTagMatcher))));
+    assertEquals(id1, query(new Query(METRIC1, Arrays.asList(regExpMatcher2, orMatcher))));
+    assertEquals(id1,
         query(new Query(METRIC1, Arrays.asList(regExpMatcher2, orMatcher))));
     assertEquals(Arrays.asList(ids.get(0), ids.get(2)),
         query(new Query(METRIC1, Arrays.asList(regExpMatcher, notOrMatcher))));

@@ -254,7 +254,7 @@ public class VarBitTimeSeriesTest {
 
   @Test
   public void testFirstValueEncoding() {
-    testValues.stream().forEach(value -> checkFirstValueEncoding(value));
+    testValues.forEach(this::checkFirstValueEncoding);
   }
 
   private void checkFirstValueEncoding(double testValue) {
@@ -340,12 +340,12 @@ public class VarBitTimeSeriesTest {
     VarBitTimeSeries series = new VarBitTimeSeries();
     List<Double> nums = Arrays.asList(0.0, 1.0, -1.0);
     final long epochSecond = startTime.getEpochSecond();
-    nums.stream().forEach(n -> series.append(epochSecond, n));
+    nums.forEach(n -> series.append(epochSecond, n));
 
     TimeSeriesIterator dr = series.read();
     List<Point> points = dr.getPoints();
     assertEquals(3, points.size());
-    points.stream().forEach(p -> assertTrue(nums.contains(p.getVal())));
+    points.forEach(p -> assertTrue(nums.contains(p.getVal())));
   }
 
   @Test
@@ -359,7 +359,7 @@ public class VarBitTimeSeriesTest {
     List<Point> points = dr.getPoints();
     assertEquals(1000, points.size());
     assertEquals(0, sumPoints(points));
-    points.stream().forEach(p -> assertEquals(0.0, p.getVal()));
+    points.forEach(p -> assertEquals(0.0, p.getVal()));
   }
 
   @Test
@@ -373,7 +373,7 @@ public class VarBitTimeSeriesTest {
     List<Point> points = dr.getPoints();
     assertEquals(1000, points.size());
     assertEquals(1000, sumPoints(points));
-    points.stream().forEach(p -> assertEquals(1.0, p.getVal()));
+    points.forEach(p -> assertEquals(1.0, p.getVal()));
   }
 
   @Test
@@ -387,7 +387,7 @@ public class VarBitTimeSeriesTest {
     List<Point> points = dr.getPoints();
     assertEquals(1000, points.size());
     assertEquals(-1000, sumPoints(points));
-    points.stream().forEach(p -> assertEquals(-1.0, p.getVal()));
+    points.forEach(p -> assertEquals(-1.0, p.getVal()));
   }
 
   @Test
@@ -450,17 +450,17 @@ public class VarBitTimeSeriesTest {
         .map(val -> new Point(startSecond + 60 * randGen.nextInt(10), val))
         .collect(Collectors.toList());
 
-    List<Long> times = inputPoints.stream().map(p -> p.getTs()).collect(Collectors.toList());
+    List<Long> times = inputPoints.stream().map(Point::getTs).collect(Collectors.toList());
 
     inputPoints.forEach(p -> series.append(p.getTs(), p.getVal()));
 
     TimeSeriesIterator dr = series.read();
     List<Point> points = dr.getPoints();
     assertEquals(numList.size(), points.size());
-    points.stream().forEach(p -> assertTrue(numList.contains(p.getVal())));
-    points.stream().forEach(p -> assertTrue(times.contains(p.getTs())));
+    points.forEach(p -> assertTrue(numList.contains(p.getVal())));
+    points.forEach(p -> assertTrue(times.contains(p.getTs())));
     assertEquals(times.stream().mapToLong(l -> l).sum(),
-        points.stream().mapToLong(p -> p.getTs()).sum());
+        points.stream().mapToLong(Point::getTs).sum());
   }
 
   private int sumPoints(List<Point> points) {

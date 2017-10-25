@@ -478,9 +478,9 @@ public class OffHeapChunkManagerTaskTest {
     final List<TimeSeries> timeSeries1 = queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 3);
     assertEquals(2, timeSeries1.size());
     final TimeSeries expectedTimeSeries1 = new TimeSeries(expectedMetricName1,
-        Arrays.asList(new Point(startTimeSecs + 1, testValue)));
+        Collections.singletonList(new Point(startTimeSecs + 1, testValue)));
     final TimeSeries expectedTimeSeries12 = new TimeSeries(expectedMetricName2,
-        Arrays.asList(new Point(startTimeSecs + 1, testValue)));
+        Collections.singletonList(new Point(startTimeSecs + 1, testValue)));
     assertTimeSeries(expectedTimeSeries1, expectedTimeSeries12, timeSeries1);
 
     // query all on-heap
@@ -550,7 +550,7 @@ public class OffHeapChunkManagerTaskTest {
                                 List<TimeSeries> actualTimeSeries) {
 
     assertThat(actualTimeSeries, IsIterableContainingInAnyOrder.containsInAnyOrder(
-        new Object[]{expectedTimeSeries1, expectedTimeSeries2}));
+        expectedTimeSeries1, expectedTimeSeries2));
   }
 
   private List<TimeSeries> queryChunkManager(long startTimeSecs, long endTimeSecs) {
@@ -671,13 +671,13 @@ public class OffHeapChunkManagerTaskTest {
     assertEquals(2, chunkManager.getChunkMap().size());
     assertEquals(1, queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 8).size());
     chunkManager.getChunkMap().forEach((k, v) ->
-        assertTrue(startTimePlusFourHoursSecs == k.longValue()
-            || startTimePlusSixHoursSecs == k.longValue()));
+        assertTrue(startTimePlusFourHoursSecs == k
+            || startTimePlusSixHoursSecs == k));
     assertEquals(1, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 6 + 1));
     assertEquals(1, queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 8).size());
     assertEquals(1, chunkManager.getChunkMap().size());
     chunkManager.getChunkMap().forEach((k, v) ->
-        assertTrue(startTimePlusSixHoursSecs == k.longValue()));
+        assertTrue(startTimePlusSixHoursSecs == k));
     assertEquals(1, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 3600 * 8 + 1));
     assertTrue(queryChunkManager(startTimeSecs, startTimeSecs + 3600 * 8).isEmpty());
     assertTrue(chunkManager.getChunkMap().isEmpty());
