@@ -255,6 +255,7 @@ public class ChunkManager {
         final Chunk chunk = entry.getValue();
         LOG.info("Moving chunk {} to off heap.", chunk.info());
 
+        // TODO: Mark chunk as read only before moving off heap.
         Chunk readOnlyChunk = toOffHeapChunk(chunk);
 
         synchronized (chunkMapSync) {
