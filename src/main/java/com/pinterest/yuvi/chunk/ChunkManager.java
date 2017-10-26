@@ -38,7 +38,6 @@ import java.util.stream.Collectors;
  */
 @SuppressWarnings("unchecked")
 public class ChunkManager {
-
   private static final Logger LOG = LoggerFactory.getLogger(ChunkManager.class);
 
   public static Duration DEFAULT_CHUNK_DURATION = Duration.ofMinutes(120);  // 2 hours.
@@ -108,7 +107,7 @@ public class ChunkManager {
    * for now. This is ok for now since the metrics are only in one format for now. If we need to
    * handle metrics in multiple formats in future, we can make this logic more pluggable.
    */
-  public void addMetric(final String metricString) {
+  public void addMetric(final String metricString) throws ReadOnlyChunkInsertionException {
     try {
       String[] metricParts = metricString.split(" ");
       if (metricParts.length > 1 && metricParts[0].equals("put")) {
@@ -119,14 +118,19 @@ public class ChunkManager {
         double value = Double.parseDouble(metricParts[3].trim());
 
         Chunk chunk = getChunk(ts);
-        chunk.addPoint(metric, ts, value);
+        if (!chunk.isReadOnly()) {
+          chunk.addPoint(metric, ts, value);
+        } else {
+          throw new ReadOnlyChunkInsertionException("Inserting metric into a read only store:"
+              + metricString);
+        }
       } else {
         throw new IllegalArgumentException("Metric doesn't start with a put: " + metricString);
       }
-    } catch (UnsupportedOperationException e) {
-      LOG.error("Inserting metric {} failed with exception.", metricString, e);
-      throw new IllegalArgumentException("Insertion into a read only store." + metricString);
+    } catch (ReadOnlyChunkInsertionException re) {
+      throw re;
     } catch (Exception e) {
+      LOG.error("metric failed with exception: ", e);
       throw new IllegalArgumentException("Invalid metric string " + metricString, e);
     }
   }
@@ -251,6 +255,7 @@ public class ChunkManager {
         final Chunk chunk = entry.getValue();
         LOG.info("Moving chunk {} to off heap.", chunk.info());
 
+        // TODO: Mark chunk as read only before moving off heap.
         Chunk readOnlyChunk = toOffHeapChunk(chunk);
 
         synchronized (chunkMapSync) {

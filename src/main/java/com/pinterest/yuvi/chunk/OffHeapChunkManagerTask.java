@@ -47,7 +47,11 @@ public class OffHeapChunkManagerTask implements Runnable {
 
   @Override
   public void run() {
-    runAt(Instant.now());
+    try{
+      runAt(Instant.now());
+    } catch (Exception e) {
+      LOG.error("Off heap chunk manager failed with an error", e);
+    }
   }
 
   /**

@@ -1,6 +1,7 @@
 package com.pinterest.yuvi.writer.kafka;
 
 import com.pinterest.yuvi.chunk.ChunkManager;
+import com.pinterest.yuvi.chunk.ReadOnlyChunkInsertionException;
 import com.pinterest.yuvi.thrift.TextMessage;
 import com.pinterest.yuvi.writer.MetricWriter;
 
@@ -31,6 +32,9 @@ import java.util.concurrent.RejectedExecutionException;
 public class KafkaMetricWriter implements MetricWriter {
 
   private static Logger LOG = LoggerFactory.getLogger(KafkaMetricWriter.class);
+
+  // Log delayed metrics to a different logger to reduce log spam.
+  private static Logger DELAYED_METRICS_LOG = LoggerFactory.getLogger("DELAYED_METRICS");
 
   private final ChunkManager chunkManager;
 
@@ -117,6 +121,7 @@ public class KafkaMetricWriter implements MetricWriter {
   private void insertRecords(ConsumerRecords<byte[], TextMessage> records) {
     int validMetrics = 0;
     int invalidMetrics = 0;
+    int delayedMetrics = 0;
     int recordCount = 0;
     for (ConsumerRecord<byte[], TextMessage> record : records) {
       recordCount = recordCount + 1;
@@ -125,14 +130,17 @@ public class KafkaMetricWriter implements MetricWriter {
         try {
           chunkManager.addMetric(metric);
           validMetrics = validMetrics + 1;
+        } catch (ReadOnlyChunkInsertionException e) {
+          DELAYED_METRICS_LOG.debug("Error ingesting metric {}", metric);
+          delayedMetrics = delayedMetrics + 1;
         } catch (Exception e) {
           LOG.error("Error ingesting metric {}", metric, e);
           invalidMetrics = invalidMetrics + 1;
         }
       }
     }
-    LOG.info("Processed {} records with {} valid metrics and {} invalid metrics",
-        recordCount, validMetrics, invalidMetrics);
+    LOG.info("Processed {} records with {} valid metrics, {} invalid metrics, {} delayed metrics",
+        recordCount, validMetrics, invalidMetrics, delayedMetrics);
   }
 
   public void close() {

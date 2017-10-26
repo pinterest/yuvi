@@ -3,6 +3,7 @@ package com.pinterest.yuvi.chunk;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.pinterest.yuvi.models.Point;
 import com.pinterest.yuvi.models.TimeSeries;
@@ -38,6 +39,12 @@ public class ChunkManagerTest {
   private final long startTime = 1488499200;  // Fri, 03 Mar 2017 00:00:00 UTC
   private final long startTimePlusTwoHours = startTime + 3600 * 2;
   private final long startTimePlusFourHours = startTime + 3600 * 4;
+
+  private final String inputTagString1 = "host=h1 dc=dc1";
+
+  public static long getReadOnlyChunkCount(ChunkManager chunkManager) {
+    return chunkManager.getChunkMap().values().stream().filter(c -> c.isReadOnly()).count();
+  }
 
   @Before
   public void setUp() {
@@ -101,7 +108,7 @@ public class ChunkManagerTest {
   }
 
   @Test
-  public void testMultipleChunkQuery() {
+  public void testMultipleChunkQuery() throws ReadOnlyChunkInsertionException {
     assertTrue(chunkManager.getChunkMap().isEmpty());
 
     // 1 data point per chunk, 1 metric
@@ -232,48 +239,48 @@ public class ChunkManagerTest {
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testInvalidMetricName() {
+  public void testInvalidMetricName() throws ReadOnlyChunkInsertionException {
     chunkManager.addMetric("random");
   }
 
   @Test
-  public void testMetricMissingTags() {
+  public void testMetricMissingTags() throws ReadOnlyChunkInsertionException {
     String metric = "put a.b.c.d-e 1465530393 0";
     chunkManager.addMetric(metric);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMetricInvalidTs() {
+  public void testMetricInvalidTs() throws ReadOnlyChunkInsertionException {
     String metric = "put a.b.c.d-e 1465530393a 0";
     chunkManager.addMetric(metric);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMetricInvalidValue() {
+  public void testMetricInvalidValue() throws ReadOnlyChunkInsertionException {
     String metric = "put a.b.c.d-e 1465530393 a0";
     chunkManager.addMetric(metric);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMetricInvalidTag() {
+  public void testMetricInvalidTag() throws ReadOnlyChunkInsertionException {
     String metric = "put a.b.c.d-e 1465530393 0 a";
     chunkManager.addMetric(metric);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMissingMetricName() {
+  public void testMissingMetricName() throws ReadOnlyChunkInsertionException {
     String metric = "put 1465530393 0";
     chunkManager.addMetric(metric);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMissingValue() {
+  public void testMissingValue() throws ReadOnlyChunkInsertionException {
     String metric = "put a.b 1465530393 c=d";
     chunkManager.addMetric(metric);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMissingTs() {
+  public void testMissingTs() throws ReadOnlyChunkInsertionException {
     String metric = "put a.b 5.1 c=d";
     chunkManager.addMetric(metric);
   }
@@ -282,7 +289,7 @@ public class ChunkManagerTest {
   // Add some tests here also.
 
   @Test
-  public void testRemoveStaleChunks() {
+  public void testRemoveStaleChunks() throws ReadOnlyChunkInsertionException {
     final Map.Entry<Long, Chunk> fakeMapEntry = new Map.Entry<Long, Chunk>() {
       @Override
       public Long getKey() {
@@ -353,5 +360,26 @@ public class ChunkManagerTest {
     assertEquals(1, chunkManager.getChunkMap().size());
     assertEquals(startTimePlusFourHours,
         chunkManager.getChunkMap().get(startTimePlusFourHours).info().startTimeSecs);
+  }
+
+  @Test(expected =  ReadOnlyChunkInsertionException.class)
+  public void testReadOnlyChunkInsertion() throws ReadOnlyChunkInsertionException {
+    assertTrue(chunkManager.getChunkMap().isEmpty());
+
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTime + 1, testValue));
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimePlusTwoHours, testValue));
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTimePlusFourHours, testValue));
+    assertEquals(3, chunkManager.getChunkMap().size());
+
+    chunkManager.toOffHeapChunkMap();
+
+    assertEquals(3, chunkManager.getChunkMap().size());
+    assertEquals(3, getReadOnlyChunkCount(chunkManager));
+
+    chunkManager.addMetric(MetricUtils.makeMetricString(
+        testMetricName, inputTagString1, startTime + 2, testValue));
   }
 }

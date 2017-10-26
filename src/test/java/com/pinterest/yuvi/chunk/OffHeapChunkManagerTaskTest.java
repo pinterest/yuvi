@@ -1,6 +1,7 @@
 package com.pinterest.yuvi.chunk;
 
 import static com.pinterest.yuvi.chunk.ChunkManager.DEFAULT_CHUNK_DURATION;
+import static com.pinterest.yuvi.chunk.ChunkManagerTest.getReadOnlyChunkCount;
 import static com.pinterest.yuvi.chunk.OffHeapChunkManagerTask.DEFAULT_METRICS_DELAY_SECS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
@@ -48,7 +49,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testDetectChunksPastCutOff() {
+  public void testDetectChunksPastCutOff() throws ReadOnlyChunkInsertionException {
     assertTrue(chunkManager.getChunkMap().isEmpty());
     assertEquals(0, offHeapChunkManagerTask.detectChunksPastCutOff(startTimeSecs));
     assertEquals(0, offHeapChunkManagerTask.detectChunksPastCutOff(startTimeSecs + 1));
@@ -125,7 +126,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testDetectReadOnlyChunksWithDefaultValues() {
+  public void testDetectReadOnlyChunksWithDefaultValues() throws ReadOnlyChunkInsertionException {
     assertTrue(chunkManager.getChunkMap().isEmpty());
     assertEquals(0, detectReadOnlyChunks(startTimeSecs));
     assertEquals(0, detectReadOnlyChunks(startTimeSecs + 1));
@@ -184,7 +185,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testRunAtWithOneChunk() {
+  public void testRunAtWithOneChunk() throws ReadOnlyChunkInsertionException {
     assertTrue(chunkManager.getChunkMap().isEmpty());
     offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimeSecs));
     assertTrue(chunkManager.getChunkMap().isEmpty());
@@ -217,7 +218,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testRunAtWithMultipleChunks() {
+  public void testRunAtWithMultipleChunks() throws ReadOnlyChunkInsertionException {
     assertTrue(chunkManager.getChunkMap().isEmpty());
     offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimeSecs));
     assertTrue(chunkManager.getChunkMap().isEmpty());
@@ -283,7 +284,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testRunAtWithOverlappingOperations() {
+  public void testRunAtWithOverlappingOperations() throws ReadOnlyChunkInsertionException {
     final int metricsDelaySecs = 0;
     offHeapChunkManagerTask =
         new OffHeapChunkManagerTask(chunkManager, metricsDelaySecs, 4 * 3600);
@@ -338,7 +339,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testChunkManagementWithCustomDelays() {
+  public void testChunkManagementWithCustomDelays() throws ReadOnlyChunkInsertionException {
     final int metricsDelaySecs = 5 * 60;
     offHeapChunkManagerTask = new OffHeapChunkManagerTask(chunkManager, metricsDelaySecs,
         4 * 60 * 60);
@@ -421,16 +422,12 @@ public class OffHeapChunkManagerTaskTest {
     assertTrue(chunkManager.getChunkMap().isEmpty());
   }
 
-  private long getReadOnlyChunkCount(ChunkManager chunkManager) {
-    return chunkManager.getChunkMap().values().stream().filter(c -> c.isReadOnly()).count();
-  }
-
   private int detectReadOnlyChunks(long startTimeSecs) {
     return offHeapChunkManagerTask.detectReadOnlyChunks(Instant.ofEpochSecond(startTimeSecs));
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testInsertionIntoOffHeapStore() {
+  @Test(expected = ReadOnlyChunkInsertionException.class)
+  public void testInsertionIntoOffHeapStore() throws ReadOnlyChunkInsertionException {
     assertTrue(chunkManager.getChunkMap().isEmpty());
 
     // All stores are on heap
@@ -459,7 +456,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testOffHeapMoveAtChunkManager() {
+  public void testOffHeapMoveAtChunkManager() throws ReadOnlyChunkInsertionException {
     final String expectedMetricName1 = testMetricName + " dc=dc1 host=h1";
     final String expectedMetricName2 = testMetricName + " dc=dc1 host=h2";
 
@@ -568,7 +565,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testDeleteStaleChunks() {
+  public void testDeleteStaleChunks() throws ReadOnlyChunkInsertionException {
     assertTrue(chunkManager.getChunkMap().isEmpty());
     assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs));
     assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 1));
@@ -629,7 +626,9 @@ public class OffHeapChunkManagerTaskTest {
     testDeleteMultipleChunks(4); // All chunks off heap.
   }
 
-  private void testDeleteMultipleChunks(int offHeapChunkCount) {
+  private void testDeleteMultipleChunks(int offHeapChunkCount)
+      throws ReadOnlyChunkInsertionException {
+
     assertTrue(chunkManager.getChunkMap().isEmpty());
     chunkManager.addMetric(MetricUtils.makeMetricString(
         testMetricName, inputTagString1, startTimePlusSixHoursSecs + 1, testValue));
@@ -688,7 +687,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testDeleteStaleData() {
+  public void testDeleteStaleData() throws ReadOnlyChunkInsertionException {
     assertTrue(chunkManager.getChunkMap().isEmpty());
     assertEquals(0, deleteStaleData(startTimeSecs));
     assertEquals(0, deleteStaleData(startTimeSecs + 1));
