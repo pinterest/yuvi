@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
  */
 @SuppressWarnings("unchecked")
 public class ChunkManager {
+
   private static final Logger LOG = LoggerFactory.getLogger(ChunkManager.class);
 
   public static Duration DEFAULT_CHUNK_DURATION = Duration.ofMinutes(120);  // 2 hours.
@@ -107,7 +108,7 @@ public class ChunkManager {
    * for now. This is ok for now since the metrics are only in one format for now. If we need to
    * handle metrics in multiple formats in future, we can make this logic more pluggable.
    */
-  public void addMetric(final String metricString) throws ReadOnlyChunkInsertionException {
+  public void addMetric(final String metricString) {
     try {
       String[] metricParts = metricString.split(" ");
       if (metricParts.length > 1 && metricParts[0].equals("put")) {
@@ -128,7 +129,7 @@ public class ChunkManager {
         throw new IllegalArgumentException("Metric doesn't start with a put: " + metricString);
       }
     } catch (ReadOnlyChunkInsertionException re) {
-      throw re;
+      throw re; // Rethrow this exception since it is useful for detecting delayed metrics.
     } catch (Exception e) {
       LOG.error("metric failed with exception: ", e);
       throw new IllegalArgumentException("Invalid metric string " + metricString, e);
@@ -251,23 +252,28 @@ public class ChunkManager {
     LOG.info("Chunks past on heap cut off are: {}", expiredChunks);
 
     expiredChunks.forEach(entry -> {
-      if (chunkMap.containsKey(entry.getKey())) {
-        final Chunk chunk = entry.getValue();
-        LOG.info("Moving chunk {} to off heap.", chunk.info());
+      try {
+        if (chunkMap.containsKey(entry.getKey())) {
+          final Chunk chunk = entry.getValue();
+          LOG.info("Moving chunk {} to off heap.", chunk.info());
 
-        // TODO: Mark chunk as read only before moving off heap.
-        Chunk readOnlyChunk = toOffHeapChunk(chunk);
+          // Set the chunk to read only before moving it off heap so it can't be changed.
+          chunk.setReadOnly(true);
+          Chunk readOnlyChunk = toOffHeapChunk(chunk);
 
-        synchronized (chunkMapSync) {
-          Chunk oldChunk = chunkMap.put(entry.getKey(), readOnlyChunk);
-          // Close the old chunk to free up memory faster.
-          oldChunk.close();
+          synchronized (chunkMapSync) {
+            Chunk oldChunk = chunkMap.put(entry.getKey(), readOnlyChunk);
+            // Close the old chunk to free up memory faster.
+            oldChunk.close();
+          }
+
+          LOG.info("Moved chunk {} to off heap.", chunk.info());
+        } else {
+          LOG.warn("Possible bug or race condition! Chunk {} doesn't exist in chunk map {}.",
+              entry, chunkMap);
         }
-
-        LOG.info("Moved chunk {} to off heap.", chunk.info());
-      } else {
-        LOG.warn("Possible bug or race condition! Chunk {} doesn't exist in chunk map {}.",
-            entry, chunkMap);
+      } catch (Exception e) {
+        LOG.error("Exception when moving a chunk {} off heap.", entry.getKey(), e);
       }
     });
   }
@@ -280,20 +286,24 @@ public class ChunkManager {
     }
 
     staleChunks.forEach(entry -> {
-      if (chunkMap.containsKey(entry.getKey())) {
-        final Chunk chunk = entry.getValue();
-        String chunkInfo = chunk.info().toString();
-        LOG.info("Deleting chunk {}.", chunkInfo);
+      try {
+        if (chunkMap.containsKey(entry.getKey())) {
+          final Chunk chunk = entry.getValue();
+          String chunkInfo = chunk.info().toString();
+          LOG.info("Deleting chunk {}.", chunkInfo);
 
-        synchronized (chunkMapSync) {
-          chunkMap.remove(entry.getKey());
+          synchronized (chunkMapSync) {
+            chunkMap.remove(entry.getKey());
+          }
+          // Close the chunk to free up resources.
+          chunk.close();
+          LOG.info("Deleted chunk {}.", chunkInfo);
+        } else {
+          LOG.warn("Possible bug or race condition! Chunk {} doesn't exist in chunk map {}.",
+              entry, chunkMap);
         }
-        // Close the chunk to free up resources.
-        chunk.close();
-        LOG.info("Deleted chunk {}.", chunkInfo);
-      } else {
-        LOG.warn("Possible bug or race condition! Chunk {} doesn't exist in chunk map {}.",
-            entry, chunkMap);
+      } catch (Exception e) {
+        LOG.error("Exception when deleting chunk.", e);
       }
     });
   }

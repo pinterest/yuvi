@@ -61,6 +61,11 @@ public class ChunkImpl implements Chunk {
     store.close();
   }
 
+  @Override
+  public void setReadOnly(boolean readOnly) {
+    store.setReadOnly(readOnly);
+  }
+
   public MetricAndTagStore getStore() {
     return store;
   }

@@ -131,7 +131,7 @@ public class KafkaMetricWriter implements MetricWriter {
           chunkManager.addMetric(metric);
           validMetrics = validMetrics + 1;
         } catch (ReadOnlyChunkInsertionException e) {
-          DELAYED_METRICS_LOG.debug("Error ingesting metric {}", metric);
+          // DELAYED_METRICS_LOG.debug("Error ingesting metric {}", metric);
           delayedMetrics = delayedMetrics + 1;
         } catch (Exception e) {
           LOG.error("Error ingesting metric {}", metric, e);

@@ -40,4 +40,9 @@ public interface MetricAndTagStore {
    * Returns true if the metric or tag store is marked as read only.
    */
   boolean isReadOnly();
+
+  /**
+   * Enable/disable read only mode for the store.
+   */
+  void setReadOnly(boolean readOnly);
 }

@@ -50,4 +50,9 @@ public interface Chunk {
    * Close the chunk.
    */
   void close();
+
+  /**
+   * Enable/disable read only mode for the store.
+   */
+  void setReadOnly(boolean readOnly);
 }

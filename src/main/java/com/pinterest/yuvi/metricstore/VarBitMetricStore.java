@@ -1,5 +1,6 @@
 package com.pinterest.yuvi.metricstore;
 
+import com.pinterest.yuvi.chunk.ReadOnlyChunkInsertionException;
 import com.pinterest.yuvi.models.Point;
 
 import org.slf4j.Logger;
@@ -27,7 +28,7 @@ public class VarBitMetricStore implements MetricStore {
 
   private HashMap<Long, VarBitTimeSeries> series;
   private final ReentrantReadWriteLock mu;
-
+  private boolean readOnly;
   public VarBitMetricStore() {
     this(DEFAULT_METRIC_STORE_SIZE);
   }
@@ -38,8 +39,9 @@ public class VarBitMetricStore implements MetricStore {
   public VarBitMetricStore(int initialSize) {
     series = new HashMap<>(initialSize);
     mu = new ReentrantReadWriteLock();
+    readOnly = false;
 
-    LOG.info("Created a var bit metric store with size {}.", initialSize);
+    LOG.info("Created a VarBitMetricStore with size {} and readOnly {}.", initialSize, readOnly);
   }
 
   @Override
@@ -58,28 +60,33 @@ public class VarBitMetricStore implements MetricStore {
 
   @Override
   public void addPoint(long uuid, long ts, double val) {
-    // Grab read lock for short path.
-    VarBitTimeSeries s;
-    mu.readLock().lock();
-    try {
-      s = series.get(uuid);
-    } finally {
-      mu.readLock().unlock();
-    }
-    if (s == null) {
-      // Retry with write lock if short path failed.
-      mu.writeLock().lock();
+    if (!readOnly) {
+      // Grab read lock for short path.
+      VarBitTimeSeries s;
+      mu.readLock().lock();
       try {
         s = series.get(uuid);
-        if (s == null) {
-          s = new VarBitTimeSeries();
-          series.put(uuid, s);
-        }
       } finally {
-        mu.writeLock().unlock();
+        mu.readLock().unlock();
       }
+      if (s == null) {
+        // Retry with write lock if short path failed.
+        mu.writeLock().lock();
+        try {
+          s = series.get(uuid);
+          if (s == null) {
+            s = new VarBitTimeSeries();
+            series.put(uuid, s);
+          }
+        } finally {
+          mu.writeLock().unlock();
+        }
+      }
+      s.append(ts, val);
+    } else {
+      throw new ReadOnlyChunkInsertionException("Inserting a metric into a read only store for "
+          + "uuid " + uuid + " ts " + ts + " val " + val);
     }
-    s.append(ts, val);
   }
 
   private ArrayList<Long> getUuids() throws Exception {
@@ -126,8 +133,13 @@ public class VarBitMetricStore implements MetricStore {
     this.series = null;
   }
 
+  public void setReadOnly(boolean readOnly) {
+    this.readOnly = readOnly;
+    LOG.info("Chunk readOnly status is {}", this.readOnly);
+  }
+
   @Override
   public boolean isReadOnly() {
-    return false;
+    return readOnly;
   }
 }

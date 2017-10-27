@@ -108,7 +108,7 @@ public class ChunkManagerTest {
   }
 
   @Test
-  public void testMultipleChunkQuery() throws ReadOnlyChunkInsertionException {
+  public void testMultipleChunkQuery() {
     assertTrue(chunkManager.getChunkMap().isEmpty());
 
     // 1 data point per chunk, 1 metric
@@ -239,48 +239,48 @@ public class ChunkManagerTest {
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testInvalidMetricName() throws ReadOnlyChunkInsertionException {
+  public void testInvalidMetricName() {
     chunkManager.addMetric("random");
   }
 
   @Test
-  public void testMetricMissingTags() throws ReadOnlyChunkInsertionException {
+  public void testMetricMissingTags() {
     String metric = "put a.b.c.d-e 1465530393 0";
     chunkManager.addMetric(metric);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMetricInvalidTs() throws ReadOnlyChunkInsertionException {
+  public void testMetricInvalidTs() {
     String metric = "put a.b.c.d-e 1465530393a 0";
     chunkManager.addMetric(metric);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMetricInvalidValue() throws ReadOnlyChunkInsertionException {
+  public void testMetricInvalidValue() {
     String metric = "put a.b.c.d-e 1465530393 a0";
     chunkManager.addMetric(metric);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMetricInvalidTag() throws ReadOnlyChunkInsertionException {
+  public void testMetricInvalidTag() {
     String metric = "put a.b.c.d-e 1465530393 0 a";
     chunkManager.addMetric(metric);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMissingMetricName() throws ReadOnlyChunkInsertionException {
+  public void testMissingMetricName() {
     String metric = "put 1465530393 0";
     chunkManager.addMetric(metric);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMissingValue() throws ReadOnlyChunkInsertionException {
+  public void testMissingValue() {
     String metric = "put a.b 1465530393 c=d";
     chunkManager.addMetric(metric);
   }
 
   @Test(expected = IllegalArgumentException.class)
-  public void testMissingTs() throws ReadOnlyChunkInsertionException {
+  public void testMissingTs() {
     String metric = "put a.b 5.1 c=d";
     chunkManager.addMetric(metric);
   }
@@ -289,7 +289,7 @@ public class ChunkManagerTest {
   // Add some tests here also.
 
   @Test
-  public void testRemoveStaleChunks() throws ReadOnlyChunkInsertionException {
+  public void testRemoveStaleChunks() {
     final Map.Entry<Long, Chunk> fakeMapEntry = new Map.Entry<Long, Chunk>() {
       @Override
       public Long getKey() {
@@ -363,7 +363,7 @@ public class ChunkManagerTest {
   }
 
   @Test(expected =  ReadOnlyChunkInsertionException.class)
-  public void testReadOnlyChunkInsertion() throws ReadOnlyChunkInsertionException {
+  public void testReadOnlyChunkInsertion() {
     assertTrue(chunkManager.getChunkMap().isEmpty());
 
     chunkManager.addMetric(MetricUtils.makeMetricString(

@@ -35,4 +35,10 @@ public interface MetricStore {
   void close();
 
   boolean isReadOnly();
+
+  /**
+   * Set/unset a store to read only mode.
+   * @param readOnly
+   */
+  void setReadOnly(boolean readOnly);
 }

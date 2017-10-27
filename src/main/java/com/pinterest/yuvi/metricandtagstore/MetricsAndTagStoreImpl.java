@@ -80,4 +80,10 @@ public class MetricsAndTagStoreImpl implements MetricAndTagStore {
   public boolean isReadOnly() {
     return tagStore.isReadOnly() || metricStore.isReadOnly();
   }
+
+  @Override
+  public void setReadOnly(boolean readOnly) {
+    // Currently, a tag store can't be set to read only since it is shard by all chunks.
+    metricStore.setReadOnly(readOnly);
+  }
 }

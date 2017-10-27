@@ -149,4 +149,9 @@ public class OffHeapVarBitMetricStore implements MetricStore {
   public boolean isReadOnly() {
     return true;
   }
+
+  @Override
+  public void setReadOnly(boolean readOnly) {
+    throw new UnsupportedOperationException("The store is read-only " + chunkInfo);
+  }
 }

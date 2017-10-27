@@ -49,7 +49,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testDetectChunksPastCutOff() throws ReadOnlyChunkInsertionException {
+  public void testDetectChunksPastCutOff() {
     assertTrue(chunkManager.getChunkMap().isEmpty());
     assertEquals(0, offHeapChunkManagerTask.detectChunksPastCutOff(startTimeSecs));
     assertEquals(0, offHeapChunkManagerTask.detectChunksPastCutOff(startTimeSecs + 1));
@@ -126,7 +126,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testDetectReadOnlyChunksWithDefaultValues() throws ReadOnlyChunkInsertionException {
+  public void testDetectReadOnlyChunksWithDefaultValues() {
     assertTrue(chunkManager.getChunkMap().isEmpty());
     assertEquals(0, detectReadOnlyChunks(startTimeSecs));
     assertEquals(0, detectReadOnlyChunks(startTimeSecs + 1));
@@ -185,7 +185,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testRunAtWithOneChunk() throws ReadOnlyChunkInsertionException {
+  public void testRunAtWithOneChunk() {
     assertTrue(chunkManager.getChunkMap().isEmpty());
     offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimeSecs));
     assertTrue(chunkManager.getChunkMap().isEmpty());
@@ -218,7 +218,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testRunAtWithMultipleChunks() throws ReadOnlyChunkInsertionException {
+  public void testRunAtWithMultipleChunks() {
     assertTrue(chunkManager.getChunkMap().isEmpty());
     offHeapChunkManagerTask.runAt(Instant.ofEpochSecond(startTimeSecs));
     assertTrue(chunkManager.getChunkMap().isEmpty());
@@ -284,7 +284,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testRunAtWithOverlappingOperations() throws ReadOnlyChunkInsertionException {
+  public void testRunAtWithOverlappingOperations() {
     final int metricsDelaySecs = 0;
     offHeapChunkManagerTask =
         new OffHeapChunkManagerTask(chunkManager, metricsDelaySecs, 4 * 3600);
@@ -339,7 +339,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testChunkManagementWithCustomDelays() throws ReadOnlyChunkInsertionException {
+  public void testChunkManagementWithCustomDelays() {
     final int metricsDelaySecs = 5 * 60;
     offHeapChunkManagerTask = new OffHeapChunkManagerTask(chunkManager, metricsDelaySecs,
         4 * 60 * 60);
@@ -427,7 +427,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test(expected = ReadOnlyChunkInsertionException.class)
-  public void testInsertionIntoOffHeapStore() throws ReadOnlyChunkInsertionException {
+  public void testInsertionIntoOffHeapStore() {
     assertTrue(chunkManager.getChunkMap().isEmpty());
 
     // All stores are on heap
@@ -456,7 +456,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testOffHeapMoveAtChunkManager() throws ReadOnlyChunkInsertionException {
+  public void testOffHeapMoveAtChunkManager() {
     final String expectedMetricName1 = testMetricName + " dc=dc1 host=h1";
     final String expectedMetricName2 = testMetricName + " dc=dc1 host=h2";
 
@@ -565,7 +565,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testDeleteStaleChunks() throws ReadOnlyChunkInsertionException {
+  public void testDeleteStaleChunks() {
     assertTrue(chunkManager.getChunkMap().isEmpty());
     assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs));
     assertEquals(0, offHeapChunkManagerTask.deleteStaleChunks(startTimeSecs + 1));
@@ -626,8 +626,7 @@ public class OffHeapChunkManagerTaskTest {
     testDeleteMultipleChunks(4); // All chunks off heap.
   }
 
-  private void testDeleteMultipleChunks(int offHeapChunkCount)
-      throws ReadOnlyChunkInsertionException {
+  private void testDeleteMultipleChunks(int offHeapChunkCount) {
 
     assertTrue(chunkManager.getChunkMap().isEmpty());
     chunkManager.addMetric(MetricUtils.makeMetricString(
@@ -687,7 +686,7 @@ public class OffHeapChunkManagerTaskTest {
   }
 
   @Test
-  public void testDeleteStaleData() throws ReadOnlyChunkInsertionException {
+  public void testDeleteStaleData() {
     assertTrue(chunkManager.getChunkMap().isEmpty());
     assertEquals(0, deleteStaleData(startTimeSecs));
     assertEquals(0, deleteStaleData(startTimeSecs + 1));
