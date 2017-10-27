@@ -10,7 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -25,8 +25,7 @@ public class VarBitMetricStore implements MetricStore {
   // TODO: Tune the default metrics size
   private static final int DEFAULT_METRIC_STORE_SIZE = 10_000;
 
-  private HashMap<Long, VarBitTimeSeries> series;
-  private final ReentrantReadWriteLock mu;
+  private Map<Long, VarBitTimeSeries> series;
 
   public VarBitMetricStore() {
     this(DEFAULT_METRIC_STORE_SIZE);
@@ -36,68 +35,36 @@ public class VarBitMetricStore implements MetricStore {
    * Create an empty metric store.
    */
   public VarBitMetricStore(int initialSize) {
-    series = new HashMap<>(initialSize);
-    mu = new ReentrantReadWriteLock();
+    series = new ConcurrentHashMap<>(initialSize);
 
     LOG.info("Created a var bit metric store with size {}.", initialSize);
   }
 
   @Override
   public List<Point> getSeries(long uuid) {
-    mu.readLock().lock();
-    try {
-      VarBitTimeSeries s = series.get(uuid);
-      if (s == null) {
-        return Collections.emptyList();
-      }
-      return s.read().getPoints();
-    } finally {
-      mu.readLock().unlock();
+    VarBitTimeSeries s = series.get(uuid);
+    if (s == null) {
+      return Collections.emptyList();
     }
+    return s.read().getPoints();
   }
 
   @Override
   public void addPoint(long uuid, long ts, double val) {
-    // Grab read lock for short path.
-    VarBitTimeSeries s;
-    mu.readLock().lock();
-    try {
-      s = series.get(uuid);
-    } finally {
-      mu.readLock().unlock();
-    }
-    if (s == null) {
-      // Retry with write lock if short path failed.
-      mu.writeLock().lock();
-      try {
-        s = series.get(uuid);
-        if (s == null) {
-          s = new VarBitTimeSeries();
-          series.put(uuid, s);
-        }
-      } finally {
-        mu.writeLock().unlock();
-      }
-    }
+    VarBitTimeSeries s = series.computeIfAbsent(uuid, k -> new VarBitTimeSeries());
     s.append(ts, val);
   }
 
-  private ArrayList<Long> getUuids() throws Exception {
-    // Copy the keys so that we don't hold the readLock for too long.
-    mu.readLock().lock();
-    try {
-      return new ArrayList<Long>(series.keySet());
-    } finally {
-      mu.readLock().unlock();
-    }
+  private List<Long> getUuids() {
+    return new ArrayList<>(series.keySet());
   }
 
   @Override
   public Map<String, Object> getStats() {
     Map<String, Object> stats = new HashMap<>();
-    stats.put("MetricCount", new Double(series.size()));
+    stats.put("MetricCount", (double) series.size());
     List<Map<String, Double>> tsStats =
-        series.values().stream().map(ts -> ts.getStats()).collect(Collectors.toList());
+        series.values().stream().map(VarBitTimeSeries::getStats).collect(Collectors.toList());
 
     stats.put("TimeStampSizeDistribution",
         tsStats.stream().map(ts -> ts.get("timestamps_dataLength"))

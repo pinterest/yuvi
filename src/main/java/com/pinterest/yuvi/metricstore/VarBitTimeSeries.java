@@ -8,6 +8,8 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.StampedLock;
 
 /**
  * VarBitTimeSeries is able to compress a time series points into a binary format, using the
@@ -34,7 +36,7 @@ public class VarBitTimeSeries {
   public static final short DEFAULT_TIMESTAMP_BITSTREAM_SIZE = 1;
   public static final short DEFAULT_VALUE_BITSTREAM_SIZE = 1;
 
-  private int size;
+  private final AtomicInteger size;
 
   private long prevTimestamp;
   private long prevTimestampDelta;
@@ -46,9 +48,13 @@ public class VarBitTimeSeries {
   private long previousValue;
   private final BitStream values;
 
+  private final StampedLock rwLock;
+
   public VarBitTimeSeries() {
     timestamps = new BitStream(DEFAULT_TIMESTAMP_BITSTREAM_SIZE);
     values = new BitStream(DEFAULT_VALUE_BITSTREAM_SIZE);
+    size = new AtomicInteger();
+    rwLock = new StampedLock();
   }
 
   /**
@@ -57,24 +63,30 @@ public class VarBitTimeSeries {
    * @param timestamp a unix timestamp in seconds
    * @param value a floating-point value
    */
-  public synchronized void append(long timestamp, double value) {
+  public void append(long timestamp, double value) {
     if (timestamp < 0 || timestamp > MAX_UNIX_TIMESTAMP) {
       throw new IllegalArgumentException("Timestamp is not a valid unix timestamp: " + timestamp);
     }
 
-    if (size == 0) {
+    if (size.getAndIncrement() == 0) {
       appendFirstPoint(timestamp, value);
     } else {
       appendNextPoint(timestamp, value);
     }
-    size++;
   }
 
   private void appendNextPoint(long timestamp, double value) {
-    appendTimestamp(timestamp);
-    appendValue(value);
+    long stamp = rwLock.writeLock();
+    try {
+      appendTimestamp(timestamp);
+      appendValue(value);
+    } finally {
+      rwLock.unlockWrite(stamp);
+    }
   }
 
+  // Caller of this function needs to explicitly acquire the reads-write lock of this class before
+  // calling this function
   private void appendValue(double value) {
     long doubleToLongBits = Double.doubleToLongBits(value);
 
@@ -109,6 +121,8 @@ public class VarBitTimeSeries {
     previousValue = doubleToLongBits;
   }
 
+  // Caller of this function needs to explicitly acquire the reads-write lock of this class before
+  // calling this function
   private void appendTimestamp(long timestamp) {
     long delta = timestamp - prevTimestamp;
     long deltaOfDelta = delta - prevTimestampDelta;
@@ -122,7 +136,7 @@ public class VarBitTimeSeries {
       timestamps.write(16, deltaOfDelta + 2047 | 0b1110000000000000);
     } else {
       timestamps.write(4, 0b1111);
-      /**
+      /*
        * There is a bug in gorilla algorithm where the delta of delta difference can't be encoded in
        * 32 bits. Adding such a value corrupts the time series encoding. However, this only happens
        * when a timestamp from 1970 is encoded followed by a value from 2016. Since the farthest
@@ -147,41 +161,55 @@ public class VarBitTimeSeries {
   private void appendFirstPoint(long timestamp, double value) {
     long twoHourTimestampOverage = timestamp % BLOCK_HEADER_OFFSET_SECS;
     long blockHeaderTimestamp = timestamp - twoHourTimestampOverage;
-    timestamps.write(32, blockHeaderTimestamp);
-    prevTimestamp = timestamp;
-    prevTimestampDelta = prevTimestamp - blockHeaderTimestamp;
-    timestamps.write(14, prevTimestampDelta);
+    long stamp = rwLock.writeLock();
+    try {
+      timestamps.write(32, blockHeaderTimestamp);
+      prevTimestamp = timestamp;
+      prevTimestampDelta = prevTimestamp - blockHeaderTimestamp;
+      timestamps.write(14, prevTimestampDelta);
 
-    // Store first value with no compression.
-    long longValue = Double.doubleToLongBits(value);
-    values.write(64, longValue);
-    previousValue = longValue;
-    previousLeadingZeros = 64;
-    previousTrailingZeros = 64;
+      // Store first value with no compression.
+      long longValue = Double.doubleToLongBits(value);
+      values.write(64, longValue);
+      previousValue = longValue;
+      previousLeadingZeros = 64;
+      previousTrailingZeros = 64;
+    } finally {
+      rwLock.unlockWrite(stamp);
+    }
   }
 
   /**
    * Read a snapshot of the time series data that has been written.
    * @return an object that can deserialize the compressed data.
    */
-  public synchronized TimeSeriesIterator read() {
+  public TimeSeriesIterator read() {
     //TODO: The read object returns the values at a point instead of returning all values when
     // called. Change it.
-    return new CachingVarBitTimeSeriesIterator(size, timestamps.read(), values.read());
+    long stamp = rwLock.tryOptimisticRead();
+    TimeSeriesIterator iterator =
+        new CachingVarBitTimeSeriesIterator(size.get(), timestamps.read(), values.read());
+    if (!rwLock.validate(stamp)) {
+      stamp = rwLock.readLock();
+      try {
+        iterator = new CachingVarBitTimeSeriesIterator(size.get(), timestamps.read(), values.read());
+      } finally {
+        rwLock.unlockRead(stamp);
+      }
+    }
+    return iterator;
   }
 
   @VisibleForTesting
   int getSize() {
-    return size;
+    return size.get();
   }
 
   public Map<String, Double> getStats() {
     Map<String, Double> stats = new HashMap<>();
-    stats.put("pointsCount", new Double(size));
-    timestamps.getStats().entrySet().forEach(
-        entry -> stats.put("timestamps_" + entry.getKey(), entry.getValue()));
-    values.getStats().entrySet().forEach(
-        entry -> stats.put("values_" + entry.getKey(), entry.getValue()));
+    stats.put("pointsCount", size.doubleValue());
+    timestamps.getStats().forEach((key, value) -> stats.put("timestamps_" + key, value));
+    values.getStats().forEach((key, value) -> stats.put("values_" + key, value));
     return Collections.unmodifiableMap(stats);
   }
 
@@ -201,20 +229,14 @@ public class VarBitTimeSeries {
         + values.getSerializedByteSize();  // Size of values
   }
 
-  public void serialize(ByteBuffer buffer) throws Exception {
-    buffer.putInt(size);
+  public void serialize(ByteBuffer buffer) {
+    buffer.putInt(size.get());
     timestamps.serialize(buffer);
     values.serialize(buffer);
   }
 
   public static TimeSeriesIterator deserialize(final ByteBuffer buffer) {
-    try {
-      int size = buffer.getInt();
-      BitStream timestamps = BitStream.deserialize(buffer);
-      BitStream values = BitStream.deserialize(buffer);
-      return new CachingVarBitTimeSeriesIterator(size, timestamps.read(), values.read());
-    } catch (Exception e) {
-      return null;
-    }
+    return new CachingVarBitTimeSeriesIterator(buffer.getInt(), BitStream.deserialize(buffer).read(),
+        BitStream.deserialize(buffer).read());
   }
 }

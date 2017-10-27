@@ -9,5 +9,5 @@ import java.util.List;
  */
 public interface TimeSeriesIterator {
 
-  public List<Point> getPoints();
+  List<Point> getPoints();
 }

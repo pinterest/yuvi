@@ -98,10 +98,10 @@ public class BitStream {
   }
 
   public Map<String, Double> getStats() {
-    HashMap<String, Double> stats = new HashMap<>();
-    stats.put("dataLength", new Double(index));
-    stats.put("dataSize", new Double(getSerializedByteSize()));
-    stats.put("capacity", new Double(capacity));
+    Map<String, Double> stats = new HashMap<>();
+    stats.put("dataLength", (double) index);
+    stats.put("dataSize", (double) getSerializedByteSize());
+    stats.put("capacity", (double) capacity);
     return Collections.unmodifiableMap(stats);
   }
 
@@ -117,10 +117,9 @@ public class BitStream {
   /**
    * Construct a new BitReader using the data in the given ByteBuffer.
    * @param buffer a buffer containing the data
-   * @throws Exception if the parsing failed.
    * @return a new BitReader
    */
-  public static BitStream deserialize(ByteBuffer buffer) throws Exception {
+  public static BitStream deserialize(ByteBuffer buffer) {
     int validDataSize = buffer.getInt();
     byte shift = buffer.get();
     long[] data = new long[validDataSize];
@@ -134,9 +133,8 @@ public class BitStream {
   /**
    * Write the data to a pre-allocated ByteBuffer.
    * @param buffer must have capacity greater or equal to serializedSize
-   * @throws Exception if buffer is invalid
    */
-  public void serialize(ByteBuffer buffer) throws Exception {
+  public void serialize(ByteBuffer buffer) {
     int validDataSize = getLastDataIndex();
     buffer.putInt(validDataSize);
     buffer.put(shift);

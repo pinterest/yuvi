@@ -28,7 +28,6 @@ public class CachingVarBitTimeSeriesIterator implements TimeSeriesIterator {
   private int prevNumberOfTrailingZeros;
   private long prevValue;
   private int idx;
-  private List<Point> ts;
 
   /**
    * Create an iterator to read a given delta time series store.
@@ -43,7 +42,7 @@ public class CachingVarBitTimeSeriesIterator implements TimeSeriesIterator {
     this.values = values;
   }
 
-  private void readFirst() {
+  private void readFirst(List<Point> pointList) {
     long t2 = timestamps.read(32);
     previousDelta = timestamps.read(14);
     prevTimestamp = t2 + previousDelta;
@@ -51,12 +50,12 @@ public class CachingVarBitTimeSeriesIterator implements TimeSeriesIterator {
     prevValue = values.read(64);
     double v = Double.longBitsToDouble(prevValue);
 
-    ts.add(new Point(prevTimestamp, v));
+    pointList.add(new Point(prevTimestamp, v));
 
     idx++;
   }
 
-  private void readNext() {
+  private void readNext(List<Point> pointList) {
     long deltaOfDelta;
     if (timestamps.tryRead(1, 0)) {
       deltaOfDelta = 0;
@@ -94,25 +93,24 @@ public class CachingVarBitTimeSeriesIterator implements TimeSeriesIterator {
     double val = Double.longBitsToDouble(v);
     prevValue = v;
 
-    ts.add(new Point(timeStamp, val));
+    pointList.add(new Point(timeStamp, val));
 
     idx++;
   }
 
   /**
    * Perform the decompression. May only be called once.
-   * @throws Exception if the decompression fails.
    * @return the decompressed time series.
    */
   public List<Point> getPoints() {
-    ts = new ArrayList<Point>(count);
+    List<Point> pointList = new ArrayList<>(count);
     if (count == 0) {
-      return ts;
+      return pointList;
     }
-    readFirst();
+    readFirst(pointList);
     while (idx < count) {
-      readNext();
+      readNext(pointList);
     }
-    return ts;
+    return pointList;
   }
 }

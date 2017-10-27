@@ -61,10 +61,8 @@ public class MetricsAndTagStoreImpl implements MetricAndTagStore {
   @Override
   public Map<String, Object> getStats() {
     Map<String, Object> stats = new HashMap<>();
-    metricStore.getStats().entrySet()
-        .forEach(entry -> stats.put("metricStore_" + entry.getKey(), entry.getValue()));
-    tagStore.getStats().entrySet()
-        .forEach(entry -> stats.put("tagStore_" + entry.getKey(), entry.getValue()));
+    metricStore.getStats().forEach((key, value) -> stats.put("metricStore_" + key, value));
+    tagStore.getStats().forEach((key, value) -> stats.put("tagStore_" + key, value));
     return stats;
   }
 
