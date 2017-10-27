@@ -89,26 +89,24 @@ public class OffHeapVarBitMetricStore implements MetricStore {
                                                         String chunkInfo) {
 
     int maxSize = timeSeriesMap.values().stream()
-        .mapToInt(series -> series.getSerializedByteSize())
+        .mapToInt(VarBitTimeSeries::getSerializedByteSize)
         .max()
         .getAsInt();
 
     OffHeapVarBitMetricStore offHeapStore =
         new OffHeapVarBitMetricStore(timeSeriesMap.size(), maxSize, chunkInfo);
 
-    timeSeriesMap.entrySet().forEach(e -> {
+    timeSeriesMap.forEach((key, series) -> {
       try {
-        VarBitTimeSeries series = e.getValue();
-
         int serializedByteSize = series.getSerializedByteSize();
         ByteBuffer serializedTimeSeriesBuffer = ByteBuffer.allocate(serializedByteSize);
         series.serialize(serializedTimeSeriesBuffer);
         // This is needed because JVM is big-endian but linux native memory is little-endian.
         serializedTimeSeriesBuffer.flip();
-        offHeapStore.addPoint(e.getKey(), serializedTimeSeriesBuffer);
+        offHeapStore.addPoint(key, serializedTimeSeriesBuffer);
       } catch (Exception ex) {
         LOG.info("Moving entry {} in chunk {} to off heap failed with exception {}",
-            e.getKey(), chunkInfo, ex);
+            key, chunkInfo, ex);
       }
     });
     return offHeapStore;
