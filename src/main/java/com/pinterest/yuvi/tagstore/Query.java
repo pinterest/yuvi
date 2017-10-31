@@ -63,4 +63,12 @@ public final class Query {
     }
     return new Query(metricName, matchers);
   }
+
+  @Override
+  public String toString() {
+    return "Query{" +
+        "metricName='" + metricName + " " +
+        ", tagMatchers=" + tagMatchers +
+        '}';
+  }
 }
