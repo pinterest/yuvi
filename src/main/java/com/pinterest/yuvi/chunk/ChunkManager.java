@@ -161,8 +161,9 @@ public class ChunkManager {
         .filter(chunk -> chunk.containsDataInTimeRange(startTsSecs, endTsSecs))
         .collect(toList());
 
-    // Query the chunks.
-    List<List<TimeSeries>> pointsFromChunks = chunksContainingData.stream()
+    // TODO: Replace parallelStream with a dedicated thread pool.
+    // Query the chunks in parallel.
+    List<List<TimeSeries>> pointsFromChunks = chunksContainingData.parallelStream()
         .map(chunk -> chunk.query(query))
         .collect(toList());
 
