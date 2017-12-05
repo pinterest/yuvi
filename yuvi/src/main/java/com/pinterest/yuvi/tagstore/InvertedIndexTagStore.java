@@ -8,6 +8,8 @@ import org.roaringbitmap.RoaringBitmap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -62,17 +64,41 @@ public class InvertedIndexTagStore implements TagStore {
   }
 
   public InvertedIndexTagStore(int metricIdMapCapacity, int initialIndexSize) {
+    this(metricIdMapCapacity, initialIndexSize, "");
+  }
+
+  public InvertedIndexTagStore(int metricIdMapCapacity, int initialIndexSize,
+                               String dataDirectory) {
+
     LOG.info("Creating an inverted index tag store.");
     if (USE_OFFHEAP_TAGSTORE) {
-      this.metricIdMap = ChronicleMap.of(Integer.class, String.class)
-          .entries(metricIdMapCapacity)
-          .averageValueSize(AVERAGE_METRIC_NAME_SIZE)
-          .create();
+      if (!dataDirectory.isEmpty()) {
+        File offHeapFile = new File(dataDirectory + "/tagStore_metricIdMap");
+        try {
+          this.metricIdMap = ChronicleMap.of(Integer.class, String.class)
+              .entries(metricIdMapCapacity)
+              .averageValueSize(AVERAGE_METRIC_NAME_SIZE)
+              .name("tagStore")
+              .createPersistedTo(offHeapFile);
+          LOG.info("Created an off heap tag store of size={} valueSize={} and persisted at {}",
+              metricIdMapCapacity, AVERAGE_METRIC_NAME_SIZE, offHeapFile.toString());
+        } catch (IOException e) {
+          LOG.error("Failed to create an offheap store {} with error {}", offHeapFile,
+              e.getMessage());
+          throw new IllegalArgumentException("Failed to create an off heap store.", e);
+        }
+      } else {
+        this.metricIdMap = ChronicleMap.of(Integer.class, String.class)
+            .entries(metricIdMapCapacity)
+            .averageValueSize(AVERAGE_METRIC_NAME_SIZE)
+            .create();
+        LOG.info("Created an off heap tag store of size={} valueSize={}",
+            metricIdMapCapacity, AVERAGE_METRIC_NAME_SIZE);
+      }
     } else {
       this.metricIdMap = new ConcurrentHashMap<>(metricIdMapCapacity);
+      LOG.info("Created an on heap tag store with capacity {}", metricIdMapCapacity);
     }
-    LOG.info("Created an off heap tag store of size={} valueSize={}",
-        metricIdMapCapacity, AVERAGE_METRIC_NAME_SIZE);
 
     this.metricIndex = new ConcurrentHashMap<>(initialIndexSize);
 

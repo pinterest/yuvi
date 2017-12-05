@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,8 +30,6 @@ public class OffHeapVarBitMetricStore implements MetricStore {
   private static final int DEFAULT_VALUE_SIZE = 2000;
 
   private Map<LongValue, ByteBuffer> timeSeries;
-
-  private final String storageDirKey = "yuvi.offheap.storage.dir";
 
   private static final String offHeapNamePrefix = "yuvi_timeseries";
 
@@ -86,7 +85,7 @@ public class OffHeapVarBitMetricStore implements MetricStore {
    * TODO: We use the max value size for all values. But it can be tuned.
    */
   public static OffHeapVarBitMetricStore toOffHeapStore(Map<Long, VarBitTimeSeries> timeSeriesMap,
-                                                        String chunkInfo) {
+                                                        String chunkInfo, String dataDirectory) {
 
     int maxSize = timeSeriesMap.values().stream()
         .mapToInt(series -> series.getSerializedByteSize())
@@ -94,7 +93,7 @@ public class OffHeapVarBitMetricStore implements MetricStore {
         .getAsInt();
 
     OffHeapVarBitMetricStore offHeapStore =
-        new OffHeapVarBitMetricStore(timeSeriesMap.size(), maxSize, chunkInfo);
+        new OffHeapVarBitMetricStore(timeSeriesMap.size(), maxSize, chunkInfo, dataDirectory);
 
     timeSeriesMap.entrySet().forEach(e -> {
       try {
@@ -127,7 +126,11 @@ public class OffHeapVarBitMetricStore implements MetricStore {
 
   @Override
   public Map<String, Object> getStats() {
-    return null;
+    Map<String, Object> stats = new HashMap<>();
+    stats.put("MetricCount", new Double(timeSeries.size()));
+    stats.put("TimeSeriesByteSize",
+        timeSeries.values().stream().mapToInt(ts -> ts.capacity()).sum());
+    return stats;
   }
 
   @Override

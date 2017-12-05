@@ -24,8 +24,8 @@ public class OffHeapChunkManagerTask implements Runnable {
 
   private static final Logger LOG = LoggerFactory.getLogger(OffHeapChunkManagerTask.class);
 
-  static final int DEFAULT_METRICS_DELAY_SECS = 15 * 60;  // 15 minutes.
-  static final int DEFAULT_STALE_DATA_DELAY_SECS = 6 * 60 * 60;  // 6 hours.
+  public static final int DEFAULT_METRICS_DELAY_SECS = 15 * 60;  // 15 minutes.
+  public static final int DEFAULT_STALE_DATA_DELAY_SECS = 6 * 60 * 60;  // 6 hours.
 
   // The time after the end time after which a chunk will be marked as read only
   private final int metricsDelay;

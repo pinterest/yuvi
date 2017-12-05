@@ -42,7 +42,7 @@ public class OffHeapVarBitMetricStoreTest {
 
     heapStore.addPoint(uuid1, ts, value);
     OffHeapVarBitMetricStore offheapStore1 =
-        OffHeapVarBitMetricStore.toOffHeapStore(getSeriesMap(heapStore), testFileName);
+        OffHeapVarBitMetricStore.toOffHeapStore(getSeriesMap(heapStore), testFileName, "");
 
     assertEquals(1, offheapStore1.getSeriesMap().size());
     List<Point> points = offheapStore1.getSeries(uuid1);
@@ -65,7 +65,7 @@ public class OffHeapVarBitMetricStoreTest {
     // 1 metric with 1 value.
     heapStore.addPoint(uuid1, ts, value);
     OffHeapVarBitMetricStore offheapStore1 =
-        OffHeapVarBitMetricStore.toOffHeapStore(getSeriesMap(heapStore), testFileName);
+        OffHeapVarBitMetricStore.toOffHeapStore(getSeriesMap(heapStore), testFileName, "");
 
     assertEquals(1, offheapStore1.getSeriesMap().size());
     List<Point> points = offheapStore1.getSeries(uuid1);
@@ -76,7 +76,7 @@ public class OffHeapVarBitMetricStoreTest {
     // 1 metric with 2 values.
     heapStore.addPoint(uuid1, ts + 1, value + 1);
     OffHeapVarBitMetricStore offheapStore2 =
-        OffHeapVarBitMetricStore.toOffHeapStore(getSeriesMap(heapStore), testFileName);
+        OffHeapVarBitMetricStore.toOffHeapStore(getSeriesMap(heapStore), testFileName, "");
     List<Point> points2 = offheapStore2.getSeries(uuid1);
     assertEquals(2, points2.size());
     assertEquals(ts, points2.get(0).getTs());
@@ -87,7 +87,7 @@ public class OffHeapVarBitMetricStoreTest {
     // 2 metrics with 2 values each.
     heapStore.addPoint(uuid2, ts + 2, value + 2);
     OffHeapVarBitMetricStore offheapStore3 =
-        OffHeapVarBitMetricStore.toOffHeapStore(getSeriesMap(heapStore), testFileName);
+        OffHeapVarBitMetricStore.toOffHeapStore(getSeriesMap(heapStore), testFileName, "");
     List<Point> points31 = offheapStore3.getSeries(uuid1);
     assertEquals(2, points31.size());
     assertEquals(ts, points31.get(0).getTs());
@@ -101,7 +101,7 @@ public class OffHeapVarBitMetricStoreTest {
 
     heapStore.addPoint(uuid2, ts + 3, value + 3);
     OffHeapVarBitMetricStore offheapStore4 =
-        OffHeapVarBitMetricStore.toOffHeapStore(getSeriesMap(heapStore), testFileName);
+        OffHeapVarBitMetricStore.toOffHeapStore(getSeriesMap(heapStore), testFileName, "");
     List<Point> points41 = offheapStore4.getSeries(uuid1);
     assertEquals(2, points41.size());
     assertEquals(ts, points41.get(0).getTs());

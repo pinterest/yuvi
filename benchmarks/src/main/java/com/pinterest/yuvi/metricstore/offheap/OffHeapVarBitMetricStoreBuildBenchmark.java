@@ -81,7 +81,7 @@ public class OffHeapVarBitMetricStoreBuildBenchmark {
   public void creationTime(Blackhole bh) {
     Map seriesMap = ((MetricsAndTagStoreImpl) ((ChunkImpl) chunkStore).getStore()).getMetricStore()
         .getSeriesMap();
-    OffHeapVarBitMetricStore newStore = OffHeapVarBitMetricStore.toOffHeapStore(seriesMap, "");
+    OffHeapVarBitMetricStore newStore = OffHeapVarBitMetricStore.toOffHeapStore(seriesMap, "", "");
     bh.consume(newStore);
   }
 }

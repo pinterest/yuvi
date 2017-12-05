@@ -45,6 +45,8 @@ public class ChunkManager {
 
   private Object chunkMapSync = new Object();
 
+  private final String dataDirectory;
+
   /**
    * Each chunk contains 2 hours worth of data. The chunk map is a map whose key is start time of a
    * 2 hours timestamp and value is a chunk for those 2 hours.
@@ -56,11 +58,17 @@ public class ChunkManager {
   private final TagStore tagStore;
 
   public ChunkManager(String chunkDataPrefix, int expectedTagStoreSize) {
+    this(chunkDataPrefix, expectedTagStoreSize, "");
+  }
+
+  public ChunkManager(String chunkDataPrefix, int expectedTagStoreSize, String dataDirectory) {
+    this.dataDirectory = dataDirectory;
     chunkMap = new ConcurrentHashMap<>();
     this.chunkDataPrefix = chunkDataPrefix;
-    this.tagStore = new InvertedIndexTagStore(expectedTagStoreSize, expectedTagStoreSize);
-    LOG.info("Created a chunk manager with prefix {} and initial tag store size {}",
-        chunkDataPrefix, expectedTagStoreSize);
+    this.tagStore =
+        new InvertedIndexTagStore(expectedTagStoreSize, expectedTagStoreSize, dataDirectory);
+    LOG.info("Created a chunk manager with prefix {}, initial tag store size {} and dataDirectory {}",
+        chunkDataPrefix, expectedTagStoreSize, dataDirectory);
   }
 
   private Chunk makeChunk(long startTime) {
@@ -241,7 +249,7 @@ public class ChunkManager {
     Map seriesMap = (metricsAndTagStore).getMetricStore().getSeriesMap();
 
     MetricStore offHeapMetricStore =
-        OffHeapVarBitMetricStore.toOffHeapStore(seriesMap, chunk.info().dataSet);
+        OffHeapVarBitMetricStore.toOffHeapStore(seriesMap, chunk.info().dataSet, dataDirectory);
 
     MetricAndTagStore newMetricAndTagStore =
         new MetricsAndTagStoreImpl(metricsAndTagStore.getTagStore(), offHeapMetricStore);
