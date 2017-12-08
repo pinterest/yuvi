@@ -3,13 +3,19 @@ package com.pinterest.yuvi.tagstore;
 import com.google.common.annotations.VisibleForTesting;
 import net.openhft.chronicle.map.ChronicleMap;
 import org.roaringbitmap.FastAggregation;
+import org.roaringbitmap.ImmutableBitmapDataProvider;
 import org.roaringbitmap.PeekableIntIterator;
 import org.roaringbitmap.RoaringBitmap;
+import org.roaringbitmap.buffer.ImmutableRoaringBitmap;
+import org.roaringbitmap.buffer.MutableRoaringBitmap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -48,16 +54,23 @@ public class InvertedIndexTagStore implements TagStore {
   private static final int DEFAULT_METRIC_ID_MAP_SIZE = 10000;
   private static final int DEFAULT_METRIC_INDEX_SIZE = DEFAULT_METRIC_ID_MAP_SIZE;
   private static final int AVERAGE_METRIC_NAME_SIZE = 250;
-  private static final boolean USE_OFFHEAP_TAGSTORE = true;
+  private static final int AVERAGE_METRIC_INDEX_SIZE = 100;
+  private static final boolean DEFAULT_USE_OFFHEAP_ID_STORE = true;
+  private static final boolean DEFAULT_USE_OFFHEAP_INDEX_STORE = true;
 
   private static final String MISSING_METRIC = "";
 
   private static final RoaringBitmap EMPTY_BITMAP = new RoaringBitmap();
 
-  private Map<String, RoaringBitmap> metricIndex;
+  private Map<String, ByteBuffer> metricIndex;
+  private final int metricIndexCapacity;
+
   private Map<Integer, String> metricIdMap;
   private AtomicInteger tagStoreCounter;
   private final int metricIdMapCapacity;
+
+  private final boolean useOffHeapIdStore;
+  private final boolean useOffHeapIndexStore;
 
   public InvertedIndexTagStore() {
     this(DEFAULT_METRIC_ID_MAP_SIZE, DEFAULT_METRIC_INDEX_SIZE);
@@ -70,20 +83,32 @@ public class InvertedIndexTagStore implements TagStore {
   public InvertedIndexTagStore(int metricIdMapCapacity, int initialIndexSize,
                                String dataDirectory) {
 
+    this(metricIdMapCapacity, initialIndexSize, "", DEFAULT_USE_OFFHEAP_ID_STORE,
+        DEFAULT_USE_OFFHEAP_INDEX_STORE);
+  }
+
+  public InvertedIndexTagStore(int metricIdMapCapacity, int initialIndexSize,
+                               String dataDirectory, boolean useOffHeapIdStore,
+                               boolean useOffHeapIndexStore) {
+
+    this.useOffHeapIdStore = useOffHeapIdStore;
+    this.useOffHeapIndexStore = useOffHeapIndexStore;
+
     LOG.info("Creating an inverted index tag store.");
-    if (USE_OFFHEAP_TAGSTORE) {
+    metricIndexCapacity = 10 * metricIdMapCapacity;
+    if (this.useOffHeapIdStore) {
       if (!dataDirectory.isEmpty()) {
-        File offHeapFile = new File(dataDirectory + "/tagStore_metricIdMap");
+        File offHeapIdFile = new File(dataDirectory + "/tagStore_metricIdMap");
         try {
           this.metricIdMap = ChronicleMap.of(Integer.class, String.class)
               .entries(metricIdMapCapacity)
               .averageValueSize(AVERAGE_METRIC_NAME_SIZE)
               .name("tagStore")
-              .createPersistedTo(offHeapFile);
+              .createPersistedTo(offHeapIdFile);
           LOG.info("Created an off heap tag store of size={} valueSize={} and persisted at {}",
-              metricIdMapCapacity, AVERAGE_METRIC_NAME_SIZE, offHeapFile.toString());
+              metricIdMapCapacity, AVERAGE_METRIC_NAME_SIZE, offHeapIdFile.toString());
         } catch (IOException e) {
-          LOG.error("Failed to create an offheap store {} with error {}", offHeapFile,
+          LOG.error("Failed to create an offheap store {} with error {}", offHeapIdFile,
               e.getMessage());
           throw new IllegalArgumentException("Failed to create an off heap store.", e);
         }
@@ -100,7 +125,36 @@ public class InvertedIndexTagStore implements TagStore {
       LOG.info("Created an on heap tag store with capacity {}", metricIdMapCapacity);
     }
 
-    this.metricIndex = new ConcurrentHashMap<>(initialIndexSize);
+    if (this.useOffHeapIndexStore) {
+      if (!dataDirectory.isEmpty()) {
+        File offHeapIndexFile = new File(dataDirectory + "/tagStore_metricIndexMap");
+        try {
+          this.metricIndex = ChronicleMap.of(String.class, ByteBuffer.class)
+              .entries(metricIndexCapacity)
+              .averageValueSize(AVERAGE_METRIC_INDEX_SIZE)
+              .averageKeySize(AVERAGE_METRIC_INDEX_SIZE)
+              .name("indexStore")
+              .createPersistedTo(offHeapIndexFile);
+          LOG.info("Created an off heap index store of size={} valueSize={} and persisted at {}",
+              metricIndexCapacity, AVERAGE_METRIC_INDEX_SIZE, offHeapIndexFile.toString());
+        } catch (IOException e) {
+          LOG.error("Failed to create an offheap store {} with error {}", offHeapIndexFile,
+              e.getMessage());
+          throw new IllegalArgumentException("Failed to create an off heap store.", e);
+        }
+      } else {
+        this.metricIndex = ChronicleMap.of(String.class, ByteBuffer.class)
+            .entries(metricIndexCapacity)
+            .averageValueSize(AVERAGE_METRIC_INDEX_SIZE)
+            .averageKeySize(AVERAGE_METRIC_INDEX_SIZE)
+            .create();
+        LOG.info("Created an off heap inverted index store of size={} valueSize={}",
+            metricIndexCapacity, AVERAGE_METRIC_INDEX_SIZE);
+      }
+    } else {
+      this.metricIndex = new ConcurrentHashMap<>(metricIndexCapacity);
+      LOG.info("Created an on heap tag store with capacity {}", metricIndexCapacity);
+    }
 
     this.tagStoreCounter = new AtomicInteger(1);
     this.metricIdMapCapacity = metricIdMapCapacity;
@@ -110,7 +164,7 @@ public class InvertedIndexTagStore implements TagStore {
   @Override
   public Optional<Integer> get(Metric m) {
     if (metricIndex.containsKey(m.fullMetricName)) {
-      return Optional.of(metricIndex.get(m.fullMetricName).getIntIterator().next());
+      return Optional.of(lookupMetricIndex(m.fullMetricName).getIntIterator().next());
     }
     return Optional.empty();
   }
@@ -131,6 +185,12 @@ public class InvertedIndexTagStore implements TagStore {
     } else {
       return Collections.emptyList();
     }
+  }
+
+  public RoaringBitmap lookupMetricIndex(String key) {
+    ByteBuffer value = metricIndex.get(key);
+    ImmutableRoaringBitmap indexMap = new ImmutableRoaringBitmap(value);
+    return indexMap.toRoaringBitmap();
   }
 
   /**
@@ -177,7 +237,7 @@ public class InvertedIndexTagStore implements TagStore {
     List<RoaringBitmap> andBitMaps = new ArrayList<>();
 
     if (metricIndex.containsKey(metricName)) {
-      andBitMaps.add(metricIndex.get(metricName));
+      andBitMaps.add(lookupMetricIndex(metricName));
     } else {
       andBitMaps.add(EMPTY_BITMAP); // If no metric name is present, return empty bitmap
     }
@@ -185,7 +245,7 @@ public class InvertedIndexTagStore implements TagStore {
     for (TagMatcher t : tagMatchers) {
       if (metricIndex.containsKey(t.tag.key)) {
         // Include all metrics that include this tag key.
-        andBitMaps.add(metricIndex.get(t.tag.key));
+        andBitMaps.add(lookupMetricIndex(t.tag.key));
 
         // Fast path looks up inverted index.
 
@@ -320,7 +380,7 @@ public class InvertedIndexTagStore implements TagStore {
     List<RoaringBitmap> andNotBitMaps = new ArrayList<>();
 
     if (metricIndex.containsKey(metricName)) {
-      andNotBitMaps.add(metricIndex.get(metricName));
+      andNotBitMaps.add(lookupMetricIndex(metricName));
     } else {
       andNotBitMaps.add(EMPTY_BITMAP);
     }
@@ -328,7 +388,7 @@ public class InvertedIndexTagStore implements TagStore {
     for (TagMatcher t : tagMatchers) {
       if (metricIndex.containsKey(t.tag.key)) {
         // Include all metrics that include this tag key.
-        andNotBitMaps.add(metricIndex.get(t.tag.key));
+        andNotBitMaps.add(lookupMetricIndex(t.tag.key));
 
         // Slow path gets the values for the metric and then matches based on the logic.
         Map<Integer, String> valuesWithMetricIds = getValuesForMetricKey(metricName, t.tag.key);
@@ -352,7 +412,7 @@ public class InvertedIndexTagStore implements TagStore {
   private void matchExactTag(TagMatcher t, List<RoaringBitmap> resultMap) {
     String rawTag = t.tag.key + "=" + t.tag.value;
     if (metricIndex.containsKey(rawTag)) {
-      resultMap.add(metricIndex.get(rawTag));
+      resultMap.add(lookupMetricIndex(rawTag));
     } else {
       resultMap.add(EMPTY_BITMAP);  // If not exact match is present, return empty bitmap.
     }
@@ -380,7 +440,7 @@ public class InvertedIndexTagStore implements TagStore {
       if (!split[i].isEmpty()) {
         final String tagValuePair = t.tag.key + "=" + split[i];
         if (metricIndex.containsKey(tagValuePair)) {
-          orMaps.add(metricIndex.get(tagValuePair));
+          orMaps.add(lookupMetricIndex(tagValuePair));
         }
       }
     }
@@ -429,13 +489,13 @@ public class InvertedIndexTagStore implements TagStore {
     List<RoaringBitmap> andBitMaps = new ArrayList<>();
 
     if (metricIndex.containsKey(metricName)) {
-      andBitMaps.add(metricIndex.get(metricName));
+      andBitMaps.add(lookupMetricIndex(metricName));
     } else {
       andBitMaps.add(EMPTY_BITMAP);
     }
 
     if (metricIndex.containsKey(key)) {
-      andBitMaps.add(metricIndex.get(key));
+      andBitMaps.add(lookupMetricIndex(key));
     } else {
       andBitMaps.add(EMPTY_BITMAP);
     }
@@ -487,7 +547,8 @@ public class InvertedIndexTagStore implements TagStore {
     Map<String, Object> stats = new HashMap<>();
     stats.put("IndexMapSize", metricIndex.size());
     stats.put("IndexMapDistribution",
-        metricIndex.entrySet().stream().map(entry -> entry.getValue().getCardinality())
+        metricIndex.entrySet().stream()
+            .map(entry -> lookupMetricIndex(entry.getKey()).getCardinality())
             .collect(Collectors.groupingBy(Function.identity(), Collectors.counting())));
     stats.put("MetricIdMapSize", metricIdMap.size());
     return stats;
@@ -510,7 +571,7 @@ public class InvertedIndexTagStore implements TagStore {
   }
 
   @VisibleForTesting
-  Map<String, RoaringBitmap> getMetricIndex() {
+  Map<String, ByteBuffer> getMetricIndex() {
     return metricIndex;
   }
 
@@ -562,19 +623,28 @@ public class InvertedIndexTagStore implements TagStore {
     // elements until the currently allocated slabs are full. So, you can insert more elements than
     // the capacity but it can run over anytime once we hit the limit. Hence the a warning to resize
     // the off heap. More info at: https://github.com/OpenHFT/Chronicle-Map/tree/master/spec
-    if (USE_OFFHEAP_TAGSTORE && metricIdMap.size() == metricIdMapCapacity) {
+    if (this.useOffHeapIdStore && metricIdMap.size() == metricIdMapCapacity) {
       LOG.warn("The off heap tag store has reached it's capacity of {}. Resize it.",
           metricIdMapCapacity);
+    }
+
+    if (this.useOffHeapIndexStore && metricIndex.size() == metricIndexCapacity) {
+      LOG.warn("The off heap index store has reached it's capacity of {}. Resize it.",
+          metricIndexCapacity);
     }
 
     return newMetricId;
   }
 
+  // TODO: Add synchronization for accessing multiple threads.
   private void addToMetricIndex(final String key, final Integer id) {
     if (metricIndex.containsKey(key)) {
-      metricIndex.get(key).add(id);
+      MutableRoaringBitmap currentMap = lookupMetricIndex(key).toMutableRoaringBitmap();
+      currentMap.add(id);
+      metricIndex.put(key, RoaringBitMapUtils.toByteBuffer(currentMap));
     } else {
-      metricIndex.put(key, RoaringBitmap.bitmapOf(id));
+      MutableRoaringBitmap newMap = MutableRoaringBitmap.bitmapOf(id);
+      metricIndex.put(key, RoaringBitMapUtils.toByteBuffer(newMap));
     }
   }
 }
