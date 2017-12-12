@@ -27,4 +27,4 @@ List<TimeSeries> ts = chunkManager.query(Query.parse("metricName.cpu.util host=*
 ```
 ## NOTE
 
-This project is under active development. We are currently integrating Yuvi with OpenTSDB.
+This project is under active development. A dev version of OpenTSDB integration code can be found at: https://github.com/mansu/opentsdb/tree/yuvi-dev
